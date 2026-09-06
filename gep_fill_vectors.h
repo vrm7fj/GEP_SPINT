@@ -28,7 +28,7 @@ struct GEPData {
   std::vector<double> t_vz;
   std::vector<double> t_vx;
   std::vector<double> t_vy;
-  
+
   std::vector<double> er_ft;
 
   std::vector<double> eresidu_ft;
@@ -38,7 +38,7 @@ struct GEPData {
 
   std::vector<double> mod_ft;
   std::vector<double> mod_fpp;
-  
+
 };
 
 
@@ -71,6 +71,18 @@ void FillVectors(TChain *C, GEPData &data) {
   Double_t eresidu_fpp[MAXHIT];
   Double_t eresidv_fpp[MAXHIT];
 
+  // Per-hit module/track-index and per-event best-track selectors,
+  // needed to build the module-wise 2D residual histograms.
+  Double_t gemFT_hit_module[MAXHIT];
+  Double_t gemFT_hit_trackindex[MAXHIT];
+  Double_t gemFT_ngoodhits;
+  Double_t gemFT_besttrack;
+
+  Double_t gemFPP_hit_module[MAXHIT];
+  Double_t gemFPP_hit_trackindex[MAXHIT];
+  Double_t gemFPP_ngoodhits;
+  Double_t gemFPP_besttrack;
+
 
   // ----------------------------------------------------------
   // Enable branches
@@ -81,6 +93,8 @@ void FillVectors(TChain *C, GEPData &data) {
   C->SetBranchStatus("sbs.tr.*", 1);
   C->SetBranchStatus("sbs.gemFT.track.*", 1);
   C->SetBranchStatus("sbs.gemFPP.track.*", 1);
+  C->SetBranchStatus("sbs.gemFT.hit.*", 1);
+  C->SetBranchStatus("sbs.gemFPP.hit.*", 1);
   C->SetBranchStatus("sbs.hcal.*", 1);
   C->SetBranchStatus("earm.ecal.*", 1);
   C->SetBranchStatus("heep.*", 1);
@@ -108,6 +122,17 @@ void FillVectors(TChain *C, GEPData &data) {
   C->SetBranchAddress("sbs.tr.vz", vz);
   C->SetBranchAddress("sbs.tr.vx", vx);
   C->SetBranchAddress("sbs.tr.vy", vy);
+
+  // Module-wise residual bookkeeping
+  C->SetBranchAddress("sbs.gemFT.hit.module",     gemFT_hit_module);
+  C->SetBranchAddress("sbs.gemFT.hit.trackindex", gemFT_hit_trackindex);
+  C->SetBranchAddress("sbs.gemFT.hit.ngoodhits",  &gemFT_ngoodhits);
+  C->SetBranchAddress("sbs.gemFT.track.besttrack", &gemFT_besttrack);
+
+  C->SetBranchAddress("sbs.gemFPP.hit.module",     gemFPP_hit_module);
+  C->SetBranchAddress("sbs.gemFPP.hit.trackindex", gemFPP_hit_trackindex);
+  C->SetBranchAddress("sbs.gemFPP.hit.ngoodhits",  &gemFPP_ngoodhits);
+  C->SetBranchAddress("sbs.gemFPP.track.besttrack", &gemFPP_besttrack);
 
   // ----------------------------------------------------------
   // Global cut
@@ -168,6 +193,41 @@ void FillVectors(TChain *C, GEPData &data) {
       data.fpp_xp.push_back(gemFPP_xp[0]);
       data.fpp_yp.push_back(gemFPP_yp[0]);
 
+      // ------------------------------------------------------
+      // Module-wise residuals: keep only hits belonging to the
+      // best track, and record their module index alongside
+      // their residuals so we can fill (module, residual) 2D
+      // histograms downstream.
+      // ------------------------------------------------------
+
+      int nhits_ft = std::min(int(gemFT_ngoodhits), (int)MAXHIT);
+      int besttrack_ft = int(gemFT_besttrack);
+
+      for (int ihit = 0; ihit < nhits_ft; ihit++) {
+
+        int trackindex = int(gemFT_hit_trackindex[ihit]);
+        if (trackindex != besttrack_ft) continue;
+
+        data.eresidu_ft.push_back(eresidu_ft[ihit]);
+        data.eresidv_ft.push_back(eresidv_ft[ihit]);
+        data.mod_ft.push_back(gemFT_hit_module[ihit]);
+
+      }
+
+      int nhits_fpp = std::min(int(gemFPP_ngoodhits), (int)MAXHIT);
+      int besttrack_fpp = int(gemFPP_besttrack);
+
+      for (int ihit = 0; ihit < nhits_fpp; ihit++) {
+
+        int trackindex = int(gemFPP_hit_trackindex[ihit]);
+        if (trackindex != besttrack_fpp) continue;
+
+        data.eresidu_fpp.push_back(eresidu_fpp[ihit]);
+        data.eresidv_fpp.push_back(eresidv_fpp[ihit]);
+        data.mod_fpp.push_back(gemFPP_hit_module[ihit]);
+
+      }
+
     }
 
     nevent++;
@@ -177,6 +237,12 @@ void FillVectors(TChain *C, GEPData &data) {
   std::cout << std::endl;
   std::cout << "Total selected events: "
             << data.ft_x.size()
+            << std::endl;
+  std::cout << "Total FT module-wise hits: "
+            << data.mod_ft.size()
+            << std::endl;
+  std::cout << "Total FPP module-wise hits: "
+            << data.mod_fpp.size()
             << std::endl;
 
 

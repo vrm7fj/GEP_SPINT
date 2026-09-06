@@ -2,6 +2,7 @@
 #define GEP_HISTOGRAMS_H
 
 #include "TH1D.h"
+#include "TH2D.h"
 #include "gep_fill_vectors.h"
 #include "gep_config.h"
 
@@ -33,12 +34,12 @@ GEPHistograms CreateHistograms() {
   hist.h_vy = new TH1D("h_vy", "Target vy; vy (#mum); Counts", 100, -52.8, -52.0);
   hist.h_vxvy = new TH2D("h_vxvy", "Target vx vs vy; vx (#mum);vy (#mum)", 100, 24.7, 25.7, 100, -52.8, -52.0);
 
-  //Residual Histograms
-  hist.h_eresidu_FT_module = new TH2D("TH2D *h_eresidu_FT_module", "eresidu FT; module; eresidu", nmod_ft, -0.5, nmod_ft-0.5, 100, -2, 2);
-  hist.h_eresidv_FT_module = new TH2D("TH2D *h_eresidv_FT_module", "eresidv FT; module; eresidv", nmod_ft, -0.5, nmod_ft-0.5, 100, -2, 2);
-  hist.h_eresidu_FPP_module = new TH2D("TH2D *h_eresidu_FPP_module", "eresidu FPP; module; eresidu", nmod_fpp, -0.5, nmod_fpp-0.5, 100, -2, 2);
-  hist.h_eresidu_FPP_module = new TH2D("TH2D *h_eresidu_FPP_module", "eresidu FPP; module; eresidv", nmod_fpp, -0.5, nmod_fPP-0.5, 100, -2, 2);
-    
+  //Module-wise residual histograms: x-axis = module index, y-axis = residual
+  hist.h_eresidu_FT_module  = new TH2D("h_eresidu_FT_module",  "eresidu FT; module; eresidu",  nmod_ft,  -0.5, nmod_ft-0.5,  100, -2, 2);
+  hist.h_eresidv_FT_module  = new TH2D("h_eresidv_FT_module",  "eresidv FT; module; eresidv",  nmod_ft,  -0.5, nmod_ft-0.5,  100, -2, 2);
+  hist.h_eresidu_FPP_module = new TH2D("h_eresidu_FPP_module", "eresidu FPP; module; eresidu", nmod_fpp, -0.5, nmod_fpp-0.5, 100, -2, 2);
+  hist.h_eresidv_FPP_module = new TH2D("h_eresidv_FPP_module", "eresidv FPP; module; eresidv", nmod_fpp, -0.5, nmod_fpp-0.5, 100, -2, 2);
+
   return hist;
 }
 
@@ -55,6 +56,16 @@ void FillHistograms(const GEPData &data, GEPHistograms &hist) {
     hist.h_vx->Fill(data.t_vx[i]*1e6);
     hist.h_vy->Fill(data.t_vy[i]*1e6);
     hist.h_vxvy->Fill(data.t_vx[i]*1e6, data.t_vy[i]*1e6);
+  }
+
+  for (size_t i = 0; i < data.mod_ft.size(); i++) {
+    hist.h_eresidu_FT_module->Fill(data.mod_ft[i], data.eresidu_ft[i]);
+    hist.h_eresidv_FT_module->Fill(data.mod_ft[i], data.eresidv_ft[i]);
+  }
+
+  for (size_t i = 0; i < data.mod_fpp.size(); i++) {
+    hist.h_eresidu_FPP_module->Fill(data.mod_fpp[i], data.eresidu_fpp[i]);
+    hist.h_eresidv_FPP_module->Fill(data.mod_fpp[i], data.eresidv_fpp[i]);
   }
 }
 
