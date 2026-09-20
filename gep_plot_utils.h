@@ -2,8 +2,10 @@
 #define GEP_PLOT_UTILS_H
 
 #include "TPaveText.h"
+#include "TH1.h"
 #include "TH1D.h"
 #include "TH2D.h"
+#include "TF1.h"
 #include "TGraphErrors.h"
 #include <vector>
 #include <string>
@@ -72,6 +74,40 @@ TGraphErrors *BuildResidualGraph(const std::vector<GEPFitResult> &fits) {
   g->SetLineWidth(2);
 
   return g;
+}
+
+// White-translucent, borderless stats box (N / Mean / RMS), ported from
+// polarimeter_recon.C -- used for the polarimeter kinematics page, which
+// keeps that script's own OptStat(0)/manual-TPaveText convention rather
+// than this file's usual built-in OptStat/OptFit boxes.
+TPaveText *MakeStatsBox(TH1 *hist, double x1, double y1, double x2, double y2) {
+  TPaveText *box = new TPaveText(x1, y1, x2, y2, "NDC");
+  box->SetFillColorAlpha(kWhite, 0.88);
+  box->SetBorderSize(0);
+  box->SetLineColor(kBlack);
+  box->SetLineWidth(1);
+  box->SetTextColor(kBlack);
+  box->SetTextFont(42);
+  box->SetTextSize(0.05);
+  box->SetTextAlign(12);
+  box->SetMargin(0.08);
+  box->AddText(Form("N = %.0f", hist->GetEntries()));
+  box->AddText(Form("Mean = %.3g", hist->GetMean()));
+  box->AddText(Form("RMS = %.3g", hist->GetRMS()));
+  return box;
+}
+
+// Same, plus fit mu/sigma/chi2-ndf -- for a fitted 1D histogram.
+TPaveText *MakeFitStatsBox(TH1 *hist, TF1 *fit, double x1, double y1, double x2, double y2) {
+  TPaveText *box = MakeStatsBox(hist, x1, y1, x2, y2);
+  box->AddText(Form("Fit #mu = %.3g #pm %.2g deg", fit->GetParameter(1), fit->GetParError(1)));
+  box->AddText(Form("Fit #sigma = %.3g #pm %.2g deg", fit->GetParameter(2), fit->GetParError(2)));
+  if (fit->GetNDF() > 0) {
+    box->AddText(Form("#chi^{2}/NDF = %.2f/%d = %.2f",
+                      fit->GetChisquare(), fit->GetNDF(),
+                      fit->GetChisquare() / fit->GetNDF()));
+  }
+  return box;
 }
 
 #endif

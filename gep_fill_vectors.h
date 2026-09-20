@@ -3,6 +3,7 @@
 
 #include "TChain.h"
 #include "TTreeFormula.h"
+#include "TMath.h"
 
 #include <vector>
 #include <iostream>
@@ -247,6 +248,172 @@ void FillVectors(TChain *C, GEPData &data) {
 
 
   delete GlobalCut;
+}
+
+// ============================================================
+// Polarimeter reconstruction data (theta_FPP, DOCA/sclose, zclose,
+// dxp/dyp, FT/FPP position-slope correlations, chi2/ndf), ported
+// from polarimeter_recon.C.
+//
+// This walks the chain a second time with its own (stricter) cut
+// and its own FPP-besttrack-indexed access, since that differs from
+// the fixed track-0 convention FillVectors() above uses. Quantities
+// are pushed for every event that passes globalcut_thetafpp, exactly
+// as in the source script (which computes them all unconditionally
+// and only applies extra windows -- sclose, zclose, theta -- at
+// histogram-fill time); FillPolarimeterHistograms() applies those
+// same windows downstream.
+// ============================================================
+
+struct PolarimeterData {
+
+  std::vector<double> theta_fpp_deg;
+  std::vector<double> sclose_m;
+  std::vector<double> zclose_m;
+
+  std::vector<double> dxp_deg;
+  std::vector<double> dyp_deg;
+
+  std::vector<double> ft_x;
+  std::vector<double> ft_y;
+  std::vector<double> ft_xp_deg;
+  std::vector<double> ft_yp_deg;
+
+  std::vector<double> fpp_x;
+  std::vector<double> fpp_y;
+  std::vector<double> fpp_xp_deg;
+  std::vector<double> fpp_yp_deg;
+
+  std::vector<double> chi2_ft;
+  std::vector<double> chi2_fpp;
+
+};
+
+void FillPolarimeterVectors(TChain *C, PolarimeterData &data) {
+
+  // ----------------------------------------------------------
+  // Branch variables
+  // ----------------------------------------------------------
+
+  Double_t theta_fpp[MAXHIT];
+  Double_t sclose[MAXHIT];
+  Double_t zclose[MAXHIT];
+  Double_t xp_fpp[MAXHIT];
+  Double_t yp_fpp[MAXHIT];
+  Double_t x_fpp[MAXHIT];
+  Double_t y_fpp[MAXHIT];
+  Double_t chi2_fpp[MAXHIT];
+
+  Double_t xp_ft[MAXHIT];
+  Double_t yp_ft[MAXHIT];
+  Double_t x_ft[MAXHIT];
+  Double_t y_ft[MAXHIT];
+  Double_t chi2_ft[MAXHIT];
+
+  Double_t besttrack_fpp;
+  Double_t ntrack_fpp;
+
+  // ----------------------------------------------------------
+  // Branch addresses. Every prefix this cut/these quantities need
+  // (sbs.gemFT.track.*, sbs.gemFPP.track.*, sbs.tr.*, sbs.hcal.*,
+  // earm.ecal.*, heep.*) is already enabled by FillVectors()'s
+  // SetBranchStatus calls earlier on this same chain, so nothing
+  // further needs enabling here -- only new addresses.
+  // ----------------------------------------------------------
+
+  C->SetBranchAddress("sbs.gemFPP.track.theta",     theta_fpp);
+  C->SetBranchAddress("sbs.gemFPP.track.besttrack", &besttrack_fpp);
+  C->SetBranchAddress("sbs.gemFPP.track.ntrack",    &ntrack_fpp);
+  C->SetBranchAddress("sbs.gemFPP.track.sclose",    sclose);
+  C->SetBranchAddress("sbs.gemFPP.track.zclose",    zclose);
+  C->SetBranchAddress("sbs.gemFPP.track.xp",        xp_fpp);
+  C->SetBranchAddress("sbs.gemFPP.track.yp",        yp_fpp);
+  C->SetBranchAddress("sbs.gemFPP.track.x",         x_fpp);
+  C->SetBranchAddress("sbs.gemFPP.track.y",         y_fpp);
+  C->SetBranchAddress("sbs.gemFPP.track.chi2ndf",   chi2_fpp);
+
+  C->SetBranchAddress("sbs.gemFT.track.xp",      xp_ft);
+  C->SetBranchAddress("sbs.gemFT.track.yp",      yp_ft);
+  C->SetBranchAddress("sbs.gemFT.track.x",       x_ft);
+  C->SetBranchAddress("sbs.gemFT.track.y",       y_ft);
+  C->SetBranchAddress("sbs.gemFT.track.chi2ndf", chi2_ft);
+
+  // ----------------------------------------------------------
+  // Global cut
+  // ----------------------------------------------------------
+
+  TTreeFormula *GlobalCutThetaFPP =
+    new TTreeFormula("GlobalCutThetaFPP", globalcut_thetafpp, C);
+
+  // ----------------------------------------------------------
+  // Event loop
+  // ----------------------------------------------------------
+
+  Long64_t nevent = 0;
+
+  int treenum = -1;
+  int oldtreenum = -1;
+
+  while (C->GetEntry(nevent)) {
+
+    treenum = C->GetTreeNumber();
+
+    if (treenum != oldtreenum) {
+
+      oldtreenum = treenum;
+      GlobalCutThetaFPP->UpdateFormulaLeaves();
+
+    }
+
+    if (nevent % 1000 == 0) {
+
+      std::cout
+        << "Event " << nevent
+        << " (polarimeter pass), file = "
+        << C->GetFile()->GetName()
+        << std::endl;
+
+    }
+
+    int itrack = int(besttrack_fpp);
+    bool passedcut = GlobalCutThetaFPP->EvalInstance(itrack) != 0;
+
+    if (passedcut) {
+
+      data.theta_fpp_deg.push_back(theta_fpp[itrack] * TMath::RadToDeg());
+      data.sclose_m.push_back(sclose[itrack]);
+      data.zclose_m.push_back(zclose[itrack]);
+
+      double dxp = (TMath::ATan(xp_ft[itrack]) - TMath::ATan(xp_fpp[itrack])) * TMath::RadToDeg();
+      double dyp = (TMath::ATan(yp_ft[itrack]) - TMath::ATan(yp_fpp[itrack])) * TMath::RadToDeg();
+
+      data.dxp_deg.push_back(dxp);
+      data.dyp_deg.push_back(dyp);
+
+      data.ft_x.push_back(x_ft[itrack]);
+      data.ft_y.push_back(y_ft[itrack]);
+      data.ft_xp_deg.push_back(TMath::ATan(xp_ft[itrack]) * TMath::RadToDeg());
+      data.ft_yp_deg.push_back(TMath::ATan(yp_ft[itrack]) * TMath::RadToDeg());
+
+      data.fpp_x.push_back(x_fpp[itrack]);
+      data.fpp_y.push_back(y_fpp[itrack]);
+      data.fpp_xp_deg.push_back(TMath::ATan(xp_fpp[itrack]) * TMath::RadToDeg());
+      data.fpp_yp_deg.push_back(TMath::ATan(yp_fpp[itrack]) * TMath::RadToDeg());
+
+      data.chi2_ft.push_back(chi2_ft[itrack]);
+      data.chi2_fpp.push_back(chi2_fpp[itrack]);
+
+    }
+
+    nevent++;
+  }
+
+  std::cout << std::endl;
+  std::cout << "Total polarimeter-selected events: "
+            << data.theta_fpp_deg.size()
+            << std::endl;
+
+  delete GlobalCutThetaFPP;
 }
 
 #endif
