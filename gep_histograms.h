@@ -47,10 +47,10 @@ GEPHistograms CreateHistograms() {
   hist.h_eresidv_FPP_module = new TH2D("h_eresidv_FPP_module", "eresidv FPP; module; eresidv", nmod_fpp, -0.5, nmod_fpp-0.5, 200, -2, 2);
 
   //Overall (all-modules-combined) residual distributions
-  hist.h_eresidu_FT  = new TH1D("h_eresidu_FT",  "Overall eresidu FT; eresidu (mm); Counts",  200, -2, 2);
-  hist.h_eresidv_FT  = new TH1D("h_eresidv_FT",  "Overall eresidv FT; eresidv (mm); Counts",  200, -2, 2);
-  hist.h_eresidu_FPP = new TH1D("h_eresidu_FPP", "Overall eresidu FPP; eresidu (mm); Counts", 200, -2, 2);
-  hist.h_eresidv_FPP = new TH1D("h_eresidv_FPP", "Overall eresidv FPP; eresidv (mm); Counts", 200, -2, 2);
+  hist.h_eresidu_FT  = new TH1D("h_eresidu_FT",  "Overall eresidu FT; eresidu (mm); Counts",  150, -2, 2);
+  hist.h_eresidv_FT  = new TH1D("h_eresidv_FT",  "Overall eresidv FT; eresidv (mm); Counts",  150, -2, 2);
+  hist.h_eresidu_FPP = new TH1D("h_eresidu_FPP", "Overall eresidu FPP; eresidu (mm); Counts", 150, -2, 2);
+  hist.h_eresidv_FPP = new TH1D("h_eresidv_FPP", "Overall eresidv FPP; eresidv (mm); Counts", 150, -2, 2);
 
   return hist;
 }

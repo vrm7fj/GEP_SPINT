@@ -25,7 +25,15 @@ void gep_physics() {
 
   TChain *C = new TChain("T");
 
-  C->Add(rootfile);
+  if(use_runlist){
+    for(int i=0; i<nruns; i++){
+        int nf = C->Add(Form("%sgep5_fullreplay_%d*.root", rootdir, runlist[i]));
+        if(nf==0) cout << "Warning: no files found for run " << runlist[i] << endl;
+    }
+  } else {
+    C->Add(rootfile_wildcard1);
+    C->Add(rootfile_wildcard2);
+  }
 
   // ==========================================================
   // Fill vectors
@@ -315,7 +323,7 @@ void gep_physics() {
   TLine *lfpp_sclose = new TLine(0.5, 0, 0.5, polhist.h_doca->GetMaximum());
   lfpp_sclose->SetLineWidth(1);
   lfpp_sclose->SetLineColor(kRed+1);
-  lfpp_sclose->Draw("SAME");
+  //lfpp_sclose->Draw("SAME");
 
   TPaveText *pt_doca = new TPaveText(0.37, 0.61, 0.81, 0.88, "NDC");
   pt_doca->SetFillColorAlpha(kWhite, 0.88);

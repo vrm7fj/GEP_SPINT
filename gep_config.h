@@ -21,16 +21,33 @@ const int MAXHIT = 1000;
 // Input ROOT files
 // ============================================================
 
-const char *rootfile = "/volatile/halla/sbs/vidura/GEP_REPLAYS/GEP3/LH2/FPPA_F2B_WITH_JUNE8_9_DONE/rootfiles/gep5_*";
-//const char *rootfile = "/volatile/halla/sbs/vidura/GEP_REPLAYS/GEP3/LH2/CFFOFF_DEFAULT_CUTS/rootfiles/gep5_fullreplay_*";
+//const char *rootfile = "/volatile/halla/sbs/vidura/GEP_REPLAYS/GEP3/LH2/FPPA_F2B_WITH_JUNE8_4_SBSNEW/rootfiles/gep5_*";
+//const char *rootfile = "/cache/halla/sbs/prod/GEP_REPLAYS/GEP3/LH2/June8_2025/gep5_fullreplay_
+
+const bool use_runlist = false;   // flip to false to go back to wildcard
+
+const char *rootfile_wildcard1 = "/volatile/halla/sbs/vidura/GEP_REPLAYS/GEP3/LH2/FPPA_F2B_WITH_JUNE8_9_DONE/rootfiles/gep5_fullreplay_*";
+const char *rootfile_wildcard2 = "/volatile/halla/sbs/vidura/GEP_REPLAYS/GEP3/LH2/FPPA_F2B_WITH_JUNE8_9_DONE_REST/rootfiles/gep5_fullreplay_*";
+
+const char *rootdir = "/cache/halla/sbs/prod/GEP_REPLAYS/GEP3/LH2/June8_2025/";
+
+const int runlist[] = {3628,3629,3635,3637,3639,3640,3641,3642,3643,3650,3654,3655,
+                        3657,3658,3659,3661,3662,3664,3665,3667,3671,3672,3674,3675,
+                        3676,3792,3793,3796,3799,3800,3803,3805,3816,3819,3821,3822,3825};
+const int nruns = sizeof(runlist)/sizeof(runlist[0]);
 
 // ============================================================
 // Global cut
 // ============================================================
 
 //TCut globalcut = "sbs.tr.n>0&&(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&sbs.gemFT.track.chi2ndf[0]<200&&sbs.gemFPP.track.chi2ndf[0]<200&&sbs.hcal.nblk>1";
-TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&sbs.gemFPP.track.sclose[0]<0.003&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
+//TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&sbs.gemFPP.track.sclose[0]<0.003&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
 
+//Improved Final
+TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-0.1613)<3*1.3&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sbs.gemFPP.track.sclose[0]<0.0025&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
+
+//June8
+//TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(heep.dt_ADC[0]-10)<2.5*3.7&&abs(heep.dpp[0]-0.005)<2.5*0.019&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&sbs.gemFPP.track.sclose[0]<0.025";
 // ============================================================
 // Polarimeter reconstruction cut (theta_FPP / DOCA / zclose /
 // dxp,dyp / FT-FPP correlations), ported from polarimeter_recon.C.
@@ -39,7 +56,11 @@ TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&
 // best-track index rather than a fixed index 0.
 // ============================================================
 
-TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-0.0034)<3*1.46&&abs(heep.dt_ADC[0]-0.2495)<3*1.271&&abs(heep.dpp[0]-0.0115)<3*0.01169&&sqrt(pow((heep.dxECAL-0.01011+0.025*earm.ecal.x)/0.01235,2)+pow((heep.dyECAL+0.005365-(0.005507+0.006248*earm.ecal.x+0.01591*pow(earm.ecal.x,2)+0.01066*pow(earm.ecal.x,3)))/0.01627,2))<=3.5&&sqrt(pow((sbs.gemFT.track.y[0]+sbs.gemFT.track.yp[0]*6.7-sbs.hcal.y[0]+0.002928)/0.05065,2)+pow((sbs.gemFT.track.x[0]+sbs.gemFT.track.xp[0]*6.7-sbs.hcal.x[0]-0.1926)/0.05886,2))<50.5";
+//Improved Final
+TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-0.1613)<3*1.3&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
+
+//June8
+//TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(heep.dt_ADC[0]-10)<2.5*3.7&&abs(heep.dpp[0]-0.005)<2.5*0.019&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7";
 
 // Secondary histogram-fill cuts / windows used downstream (theta range,
 // zclose target window, DOCA cut) -- same numeric values as
@@ -48,6 +69,6 @@ const double fpp_theta_min    = 0.6;             // deg
 const double fpp_theta_max    = 9.0;             // deg
 const double fpp_zclose_mean  = 1.5;             // m
 const double fpp_zclose_sigma = (0.55 / 2.0) * 10.0; // m
-const double fpp_sclose_cut   = 0.005;           // m
+const double fpp_sclose_cut   = 0.0025;           // m
 
 #endif

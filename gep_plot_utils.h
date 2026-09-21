@@ -71,7 +71,7 @@ TGraphErrors *BuildResidualGraph(const std::vector<GEPFitResult> &fits) {
   g->SetMarkerSize(1.0);
   g->SetMarkerColor(kBlack);
   g->SetLineColor(kBlack);
-  g->SetLineWidth(2);
+  g->SetLineWidth(1);
 
   return g;
 }
