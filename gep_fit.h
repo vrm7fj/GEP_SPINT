@@ -17,6 +17,8 @@ struct GEPFitResult {
   double amplitude;
   double mean_error;
   double sigma_error;
+  double chi2;
+  int    ndf;
   bool   valid;   // false if the histogram had no data and was skipped
 };
 
@@ -88,6 +90,8 @@ GEPFitResult FitPeak(TH1D *hist, double refit_nsigma = 2.0) {
   result.sigma = std::abs(fit2->GetParameter(2));
   result.mean_error = fit2->GetParError(1);
   result.sigma_error = fit2->GetParError(2);
+  result.chi2 = fit2->GetChisquare();
+  result.ndf = fit2->GetNDF();
   result.valid = true;
 
   std::cout << hist->GetName() << std::endl;

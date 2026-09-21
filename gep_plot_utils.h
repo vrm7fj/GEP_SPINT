@@ -110,4 +110,21 @@ TPaveText *MakeFitStatsBox(TH1 *hist, TF1 *fit, double x1, double y1, double x2,
   return box;
 }
 
+// Same as MakeFitStatsBox, but sourced from an already-computed
+// GEPFitResult (mean/sigma/chi2/ndf) instead of a live TF1* -- used on
+// pages where the fit was done earlier via FitPeak() and only the
+// resulting numbers are needed for display. Same large, borderless,
+// translucent-white style as the polarimeter kinematics page (page 4)
+// in place of the small default ROOT stat/fit box.
+TPaveText *MakeFitStatsBoxFromResult(TH1 *hist, const GEPFitResult &fit, double x1, double y1, double x2, double y2, const char *unit = "mm") {
+  TPaveText *box = MakeStatsBox(hist, x1, y1, x2, y2);
+  box->AddText(Form("Fit #mu = %.3g #pm %.2g %s", fit.mean, fit.mean_error, unit));
+  box->AddText(Form("Fit #sigma = %.3g #pm %.2g %s", fit.sigma, fit.sigma_error, unit));
+  if (fit.ndf > 0) {
+    box->AddText(Form("#chi^{2}/NDF = %.2f/%d = %.2f",
+                      fit.chi2, fit.ndf, fit.chi2 / fit.ndf));
+  }
+  return box;
+}
+
 #endif

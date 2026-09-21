@@ -209,51 +209,69 @@ void gep_physics() {
 
   gStyle->SetPalette(kRainBow);
 
+  // Custom, larger TPaveText fit-stats boxes (like the polarimeter
+  // kinematics page) replace the default ROOT stat/fit box on this
+  // page's 1D overall-residual plots. The 2D module-map (COLZ) plots
+  // get no stats box at all, so OptStat/OptFit stay off for the whole
+  // page and the 1D pads draw their box manually.
   gStyle->SetOptStat(0);
+  gStyle->SetOptFit(0);
 
   c1->cd(1);
   hist.h_eresidu_FT_module->SetMinimum(0);
   hist.h_eresidu_FT_module->SetMaximum(1);
+  hist.h_eresidu_FT_module->SetStats(0);
   hist.h_eresidu_FT_module->Draw("COLZ");
   g_eresidu_FT->Draw("P SAME");
 
   c1->cd(2);
   hist.h_eresidv_FT_module->SetMinimum(0);
   hist.h_eresidv_FT_module->SetMaximum(1);
+  hist.h_eresidv_FT_module->SetStats(0);
   hist.h_eresidv_FT_module->Draw("COLZ");
   g_eresidv_FT->Draw("P SAME");
 
-  gStyle->SetOptStat(1111);
-  gStyle->SetOptFit(1111);
-
   c1->cd(3);
+  hist.h_eresidu_FT->SetStats(0);
   hist.h_eresidu_FT->Draw();
+  if (fit_eresidu_FT.valid) {
+    MakeFitStatsBoxFromResult(hist.h_eresidu_FT, fit_eresidu_FT, 0.55, 0.60, 0.94, 0.90)->Draw();
+  }
 
   c1->cd(4);
+  hist.h_eresidv_FT->SetStats(0);
   hist.h_eresidv_FT->Draw();
-
-  gStyle->SetOptStat(0);
+  if (fit_eresidv_FT.valid) {
+    MakeFitStatsBoxFromResult(hist.h_eresidv_FT, fit_eresidv_FT, 0.55, 0.60, 0.94, 0.90)->Draw();
+  }
 
   c1->cd(5);
   hist.h_eresidu_FPP_module->SetMinimum(0);
   hist.h_eresidu_FPP_module->SetMaximum(1);
+  hist.h_eresidu_FPP_module->SetStats(0);
   hist.h_eresidu_FPP_module->Draw("COLZ");
   g_eresidu_FPP->Draw("P SAME");
 
   c1->cd(6);
   hist.h_eresidv_FPP_module->SetMinimum(0);
   hist.h_eresidv_FPP_module->SetMaximum(1);
+  hist.h_eresidv_FPP_module->SetStats(0);
   hist.h_eresidv_FPP_module->Draw("COLZ");
   g_eresidv_FPP->Draw("P SAME");
 
-  gStyle->SetOptStat(1111);
-  gStyle->SetOptFit(1111);
-
   c1->cd(7);
+  hist.h_eresidu_FPP->SetStats(0);
   hist.h_eresidu_FPP->Draw();
+  if (fit_eresidu_FPP.valid) {
+    MakeFitStatsBoxFromResult(hist.h_eresidu_FPP, fit_eresidu_FPP, 0.55, 0.60, 0.94, 0.90)->Draw();
+  }
 
   c1->cd(8);
+  hist.h_eresidv_FPP->SetStats(0);
   hist.h_eresidv_FPP->Draw();
+  if (fit_eresidv_FPP.valid) {
+    MakeFitStatsBoxFromResult(hist.h_eresidv_FPP, fit_eresidv_FPP, 0.55, 0.60, 0.94, 0.90)->Draw();
+  }
 
   c1->Print("gep_physics_output.pdf");
 
