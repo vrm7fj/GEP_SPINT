@@ -87,6 +87,13 @@ void gep_physics() {
   std::vector<GEPFitResult> fits_eresidu_FPP = FitModuleColumns(hist.h_eresidu_FPP_module, nmod_fpp);
   std::vector<GEPFitResult> fits_eresidv_FPP = FitModuleColumns(hist.h_eresidv_FPP_module, nmod_fpp);
 
+  // Same per-column fit, but one column per layer (modules combined
+  // into layers via layer_of_mod_ft/fpp in gep_config.h).
+  std::vector<GEPFitResult> fits_eresidu_FT_layer  = FitModuleColumns(hist.h_eresidu_FT_layer,  nlayer_ft);
+  std::vector<GEPFitResult> fits_eresidv_FT_layer  = FitModuleColumns(hist.h_eresidv_FT_layer,  nlayer_ft);
+  std::vector<GEPFitResult> fits_eresidu_FPP_layer = FitModuleColumns(hist.h_eresidu_FPP_layer, nlayer_fpp);
+  std::vector<GEPFitResult> fits_eresidv_FPP_layer = FitModuleColumns(hist.h_eresidv_FPP_layer, nlayer_fpp);
+
   // Fit the overall (all-modules-combined) U/V residual distributions
   GEPFitResult fit_eresidu_FT  = FitPeak(hist.h_eresidu_FT);
   GEPFitResult fit_eresidv_FT  = FitPeak(hist.h_eresidv_FT);
@@ -98,6 +105,11 @@ void gep_physics() {
   TGraphErrors *g_eresidu_FPP = BuildResidualGraph(fits_eresidu_FPP);
   TGraphErrors *g_eresidv_FPP = BuildResidualGraph(fits_eresidv_FPP);
 
+  TGraphErrors *g_eresidu_FT_layer  = BuildResidualGraph(fits_eresidu_FT_layer);
+  TGraphErrors *g_eresidv_FT_layer  = BuildResidualGraph(fits_eresidv_FT_layer);
+  TGraphErrors *g_eresidu_FPP_layer = BuildResidualGraph(fits_eresidu_FPP_layer);
+  TGraphErrors *g_eresidv_FPP_layer = BuildResidualGraph(fits_eresidv_FPP_layer);
+
   // ==========================================================
   // Normalize module-wise 2D residual histograms for display
   // (each module column scaled to its own peak bin). Purely
@@ -108,6 +120,11 @@ void gep_physics() {
   NormalizeModuleColumns(hist.h_eresidv_FT_module);
   NormalizeModuleColumns(hist.h_eresidu_FPP_module);
   NormalizeModuleColumns(hist.h_eresidv_FPP_module);
+
+  NormalizeModuleColumns(hist.h_eresidu_FT_layer);
+  NormalizeModuleColumns(hist.h_eresidv_FT_layer);
+  NormalizeModuleColumns(hist.h_eresidu_FPP_layer);
+  NormalizeModuleColumns(hist.h_eresidv_FPP_layer);
 
   // ==========================================================
   // ROOT output
@@ -127,6 +144,10 @@ void gep_physics() {
   hist.h_eresidv_FT_module->Write();
   hist.h_eresidu_FPP_module->Write();
   hist.h_eresidv_FPP_module->Write();
+  hist.h_eresidu_FT_layer->Write();
+  hist.h_eresidv_FT_layer->Write();
+  hist.h_eresidu_FPP_layer->Write();
+  hist.h_eresidv_FPP_layer->Write();
   hist.h_eresidu_FT->Write();
   hist.h_eresidv_FT->Write();
   hist.h_eresidu_FPP->Write();
@@ -274,6 +295,53 @@ void gep_physics() {
   }
 
   c1->Print("gep_physics_output.pdf");
+
+  //---------- Layer-wise residuals: one 2D plot per page
+  //---------- (FT u, FT v, FPP u, FPP v). Same per-column
+  //---------- normalization and mean +/- sigma overlay as the
+  //---------- module-wise maps above.
+
+  {
+    struct LayerPage { TH2D *h; TGraphErrors *g; const char *modmap; };
+    LayerPage layer_pages[4] = {
+      { hist.h_eresidu_FT_layer,  g_eresidu_FT_layer,  "FT: L0-L5 = m0-m5, L6 = m6-m9, L7 = m10-m13" },
+      { hist.h_eresidv_FT_layer,  g_eresidv_FT_layer,  "FT: L0-L5 = m0-m5, L6 = m6-m9, L7 = m10-m13" },
+      { hist.h_eresidu_FPP_layer, g_eresidu_FPP_layer, "FPP: L_{n} = m_{4n} - m_{4n+3}" },
+      { hist.h_eresidv_FPP_layer, g_eresidv_FPP_layer, "FPP: L_{n} = m_{4n} - m_{4n+3}" }
+    };
+
+    gStyle->SetOptStat(0);
+    gStyle->SetOptFit(0);
+    gStyle->SetPalette(kRainBow);
+
+    for (int ip = 0; ip < 4; ip++) {
+      c1->Clear();
+      c1->SetCanvasSize(1200, 900);
+      c1->cd();
+      c1->SetLeftMargin(0.11);
+      c1->SetRightMargin(0.14);
+      c1->SetBottomMargin(0.11);
+      c1->SetTopMargin(0.08);
+
+      TH2D *h = layer_pages[ip].h;
+      h->SetMinimum(0);
+      h->SetMaximum(1);
+      h->SetStats(0);
+      h->GetXaxis()->SetNdivisions(h->GetNbinsX(), 0, 0, kFALSE);
+      h->Draw("COLZ");
+      layer_pages[ip].g->Draw("P SAME");
+
+      DrawTextBox({ layer_pages[ip].modmap }, 0.13, 0.86, 0.60, 0.91);
+
+      c1->Print("gep_physics_output.pdf");
+    }
+
+    // Restore canvas margins for the pages that follow
+    c1->SetLeftMargin(gStyle->GetPadLeftMargin());
+    c1->SetRightMargin(gStyle->GetPadRightMargin());
+    c1->SetBottomMargin(gStyle->GetPadBottomMargin());
+    c1->SetTopMargin(gStyle->GetPadTopMargin());
+  }
 
   //---------- Polarimeter kinematics: theta_FPP, DOCA, z_close,
   //---------- theta vs z_close, dxp, dyp, dxp-vs-dyp. Ported from

@@ -20,6 +20,13 @@ struct GEPHistograms {
   TH2D *h_eresidu_FPP_module;
   TH2D *h_eresidv_FPP_module;
 
+  // Layer-wise residual histograms: x-axis = layer index, y-axis = residual.
+  // Modules are combined into layers via layer_of_mod_ft/fpp (gep_config.h).
+  TH2D *h_eresidu_FT_layer;
+  TH2D *h_eresidv_FT_layer;
+  TH2D *h_eresidu_FPP_layer;
+  TH2D *h_eresidv_FPP_layer;
+
   // Overall (all-modules-combined) residual distributions
   TH1D *h_eresidu_FT;
   TH1D *h_eresidv_FT;
@@ -45,6 +52,12 @@ GEPHistograms CreateHistograms() {
   hist.h_eresidv_FT_module  = new TH2D("h_eresidv_FT_module",  "eresidv FT; module; eresidv",  nmod_ft,  -0.5, nmod_ft-0.5,  200, -2, 2);
   hist.h_eresidu_FPP_module = new TH2D("h_eresidu_FPP_module", "eresidu FPP; module; eresidu", nmod_fpp, -0.5, nmod_fpp-0.5, 200, -2, 2);
   hist.h_eresidv_FPP_module = new TH2D("h_eresidv_FPP_module", "eresidv FPP; module; eresidv", nmod_fpp, -0.5, nmod_fpp-0.5, 200, -2, 2);
+
+  //Layer-wise residual histograms: x-axis = layer index, y-axis = residual
+  hist.h_eresidu_FT_layer  = new TH2D("h_eresidu_FT_layer",  "FT layer-wise eresidu; layer; eresidu (mm)",  nlayer_ft,  -0.5, nlayer_ft-0.5,  200, -2, 2);
+  hist.h_eresidv_FT_layer  = new TH2D("h_eresidv_FT_layer",  "FT layer-wise eresidv; layer; eresidv (mm)",  nlayer_ft,  -0.5, nlayer_ft-0.5,  200, -2, 2);
+  hist.h_eresidu_FPP_layer = new TH2D("h_eresidu_FPP_layer", "FPP layer-wise eresidu; layer; eresidu (mm)", nlayer_fpp, -0.5, nlayer_fpp-0.5, 200, -2, 2);
+  hist.h_eresidv_FPP_layer = new TH2D("h_eresidv_FPP_layer", "FPP layer-wise eresidv; layer; eresidv (mm)", nlayer_fpp, -0.5, nlayer_fpp-0.5, 200, -2, 2);
 
   //Overall (all-modules-combined) residual distributions
   hist.h_eresidu_FT  = new TH1D("h_eresidu_FT",  "Overall eresidu FT; eresidu (mm); Counts",  120, -2, 2);
@@ -75,6 +88,12 @@ void FillHistograms(const GEPData &data, GEPHistograms &hist) {
     hist.h_eresidv_FT_module->Fill(data.mod_ft[i], data.eresidv_ft[i]);
     hist.h_eresidu_FT->Fill(data.eresidu_ft[i]);
     hist.h_eresidv_FT->Fill(data.eresidv_ft[i]);
+
+    int layer = LayerOfModuleFT(int(data.mod_ft[i]));
+    if (layer >= 0) {
+      hist.h_eresidu_FT_layer->Fill(layer, data.eresidu_ft[i]);
+      hist.h_eresidv_FT_layer->Fill(layer, data.eresidv_ft[i]);
+    }
   }
 
   for (size_t i = 0; i < data.mod_fpp.size(); i++) {
@@ -82,6 +101,12 @@ void FillHistograms(const GEPData &data, GEPHistograms &hist) {
     hist.h_eresidv_FPP_module->Fill(data.mod_fpp[i], data.eresidv_fpp[i]);
     hist.h_eresidu_FPP->Fill(data.eresidu_fpp[i]);
     hist.h_eresidv_FPP->Fill(data.eresidv_fpp[i]);
+
+    int layer = LayerOfModuleFPP(int(data.mod_fpp[i]));
+    if (layer >= 0) {
+      hist.h_eresidu_FPP_layer->Fill(layer, data.eresidu_fpp[i]);
+      hist.h_eresidv_FPP_layer->Fill(layer, data.eresidv_fpp[i]);
+    }
   }
 }
 

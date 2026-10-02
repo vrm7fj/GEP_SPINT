@@ -13,7 +13,32 @@ const double mu_p = 2.793;        // Proton magnetic moment
 const double kappa_p = mu_p - 1.0;
 const double rad2deg = 180.0 / TMath::Pi();
 const int nmod_ft = 14;
-const int nmod_fpp = 32; 
+const int nmod_fpp = 32;
+
+// ------------------------------------------------------------
+// Module -> layer mapping, from SBS-replay DB
+// (DB/20250401/db_sbs.gemFT.dat and db_sbs.gemFPP.dat,
+//  "sbs.gemXX.mN.layer = L"; same in 20240409 and 20250101).
+//   FT : m0..m5 -> L0..L5 (one module each), m6-m9 -> L6, m10-m13 -> L7
+//   FPP: 4 modules per layer, m(4L)..m(4L+3) -> L
+// ------------------------------------------------------------
+const int nlayer_ft  = 8;
+const int nlayer_fpp = 8;
+
+const int layer_of_mod_ft[nmod_ft] = {
+  0, 1, 2, 3, 4, 5,
+  6, 6, 6, 6,
+  7, 7, 7, 7
+};
+
+const int layer_of_mod_fpp[nmod_fpp] = {
+  0, 0, 0, 0,   1, 1, 1, 1,   2, 2, 2, 2,   3, 3, 3, 3,
+  4, 4, 4, 4,   5, 5, 5, 5,   6, 6, 6, 6,   7, 7, 7, 7
+};
+
+// Returns -1 for a module index outside the mapping.
+inline int LayerOfModuleFT(int mod)  { return (mod >= 0 && mod < nmod_ft)  ? layer_of_mod_ft[mod]  : -1; }
+inline int LayerOfModuleFPP(int mod) { return (mod >= 0 && mod < nmod_fpp) ? layer_of_mod_fpp[mod] : -1; }
 
 const int MAXHIT = 1000;
 
