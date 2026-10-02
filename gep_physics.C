@@ -32,7 +32,7 @@ void gep_physics() {
     }
   } else {
     C->Add(rootfile_wildcard1);
-    C->Add(rootfile_wildcard2);
+    //C->Add(rootfile_wildcard2);
   }
 
   // ==========================================================
@@ -311,8 +311,8 @@ void gep_physics() {
   lfpp_theta2->SetLineColor(kRed+1);
 
   polhist.h_theta_fpp->Draw("hist");
-  lfpp_theta1->Draw("SAME");
-  lfpp_theta2->Draw("SAME");
+  //lfpp_theta1->Draw("SAME");
+  //lfpp_theta2->Draw("SAME");
 
   MakeStatsBox(polhist.h_theta_fpp, 0.62, 0.73, 0.91, 0.90)->Draw();
 
@@ -386,7 +386,7 @@ void gep_physics() {
   leg_zclose->AddEntry(polhist.h_zclose_sAng, Form("#theta_{FPP} <= %.2f", fpp_theta_min), "lf");
   leg_zclose->Draw();
 
-  MakeStatsBox(polhist.h_zclose_all, 0.59, 0.47, 0.93, 0.65)->Draw();
+  //MakeStatsBox(polhist.h_zclose_all, 0.59, 0.47, 0.93, 0.65)->Draw();
 
   c1->cd(4);
   gPad->SetRightMargin(0.16);

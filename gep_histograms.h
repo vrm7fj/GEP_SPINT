@@ -47,10 +47,10 @@ GEPHistograms CreateHistograms() {
   hist.h_eresidv_FPP_module = new TH2D("h_eresidv_FPP_module", "eresidv FPP; module; eresidv", nmod_fpp, -0.5, nmod_fpp-0.5, 200, -2, 2);
 
   //Overall (all-modules-combined) residual distributions
-  hist.h_eresidu_FT  = new TH1D("h_eresidu_FT",  "Overall eresidu FT; eresidu (mm); Counts",  150, -2, 2);
-  hist.h_eresidv_FT  = new TH1D("h_eresidv_FT",  "Overall eresidv FT; eresidv (mm); Counts",  150, -2, 2);
-  hist.h_eresidu_FPP = new TH1D("h_eresidu_FPP", "Overall eresidu FPP; eresidu (mm); Counts", 150, -2, 2);
-  hist.h_eresidv_FPP = new TH1D("h_eresidv_FPP", "Overall eresidv FPP; eresidv (mm); Counts", 150, -2, 2);
+  hist.h_eresidu_FT  = new TH1D("h_eresidu_FT",  "Overall eresidu FT; eresidu (mm); Counts",  120, -2, 2);
+  hist.h_eresidv_FT  = new TH1D("h_eresidv_FT",  "Overall eresidv FT; eresidv (mm); Counts",  120, -2, 2);
+  hist.h_eresidu_FPP = new TH1D("h_eresidu_FPP", "Overall eresidu FPP; eresidu (mm); Counts", 120, -2, 2);
+  hist.h_eresidv_FPP = new TH1D("h_eresidv_FPP", "Overall eresidv FPP; eresidv (mm); Counts", 120, -2, 2);
 
   return hist;
 }
@@ -128,9 +128,9 @@ PolarimeterHistograms CreatePolarimeterHistograms() {
   h.h_theta_fpp = new TH1D("h_theta_fpp", "#theta_{FPP};#theta_{FPP} [deg];Counts", 100, 0, 10);
   h.h_doca      = new TH1D("h_doca", "DOCA;DOCA [cm];Counts", 50, 0, 2);
 
-  h.h_zclose_all  = new TH1D("h_zclose_all",  "z_{close} all;z_{close} [m];Counts", 75, 0, 3.5);
-  h.h_zclose_sAng = new TH1D("h_zclose_sAng", "z_{close} small angle;z_{close} [m];Counts", 75, 0, 3.5);
-  h.h_zclose_lAng = new TH1D("h_zclose_lAng", "z_{close} large angle;z_{close} [m];Counts", 75, 0, 3.5);
+  h.h_zclose_all  = new TH1D("h_zclose_all",  "z_{close} all;z_{close} [m];Counts", 60, 0, 3.5);
+  h.h_zclose_sAng = new TH1D("h_zclose_sAng", "z_{close} small angle;z_{close} [m];Counts", 60, 0, 3.5);
+  h.h_zclose_lAng = new TH1D("h_zclose_lAng", "z_{close} large angle;z_{close} [m];Counts", 60, 0, 3.5);
 
   h.h_dxp = new TH1D("h_dxp_pol", "dxp;xp_{FT} - xp_{FPP} [deg];Counts", 400, -10, 11);
   h.h_dyp = new TH1D("h_dyp_pol", "dyp;yp_{FT} - yp_{FPP} [deg];Counts", 400, -10, 11);
@@ -213,7 +213,7 @@ void FillPolarimeterHistograms(const PolarimeterData &data, PolarimeterHistogram
     bool close_track   = (data.sclose_m[i] < fpp_sclose_cut);
     bool near_target_z = (TMath::Abs(zclose - fpp_zclose_mean) < fpp_zclose_sigma);
 
-    if (close_track) {
+    if (true) {
       h.h_zclose_all->Fill(zclose);
 
       if (theta > fpp_theta_min && theta < fpp_theta_max) {
@@ -225,14 +225,14 @@ void FillPolarimeterHistograms(const PolarimeterData &data, PolarimeterHistogram
       h.h_theta_vs_zclose->Fill(zclose, theta);
     }
 
-    if (close_track && near_target_z) {
+    if (true /*close_track && near_target_z*/) {
       h.h_dxp->Fill(data.dxp_deg[i]);
       h.h_dyp->Fill(data.dyp_deg[i]);
       h.h_dxpdyp->Fill(data.dxp_deg[i], data.dyp_deg[i]);
       h.h_dxpdyp_allth->Fill(data.dxp_deg[i], data.dyp_deg[i]);
     }
 
-    if (theta > fpp_theta_min && theta < fpp_theta_max && close_track && near_target_z) {
+    if (true /*theta > fpp_theta_min && theta < fpp_theta_max && close_track && near_target_z*/) {
       h.h_xxp_ft->Fill(data.ft_xp_deg[i], data.ft_x[i]);
       h.h_xyp_ft->Fill(data.ft_yp_deg[i], data.ft_x[i]);
       h.h_yxp_ft->Fill(data.ft_xp_deg[i], data.ft_y[i]);
