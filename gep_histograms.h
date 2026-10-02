@@ -59,6 +59,18 @@ GEPHistograms CreateHistograms() {
   hist.h_eresidu_FPP_layer = new TH2D("h_eresidu_FPP_layer", "FPP layer-wise eresidu; layer; eresidu (mm)", nlayer_fpp, -0.5, nlayer_fpp-0.5, 200, -2, 2);
   hist.h_eresidv_FPP_layer = new TH2D("h_eresidv_FPP_layer", "FPP layer-wise eresidv; layer; eresidv (mm)", nlayer_fpp, -0.5, nlayer_fpp-0.5, 200, -2, 2);
 
+  // Label each layer bin at its centre ("0", "1", ...) instead of
+  // numeric ticks at the bin edges (-0.5, 0.5, ...).
+  TH2D *layer_hists[4] = { hist.h_eresidu_FT_layer, hist.h_eresidv_FT_layer,
+                           hist.h_eresidu_FPP_layer, hist.h_eresidv_FPP_layer };
+  for (TH2D *h : layer_hists) {
+    for (int ib = 1; ib <= h->GetNbinsX(); ib++) {
+      h->GetXaxis()->SetBinLabel(ib, Form("%d", ib - 1));
+    }
+    h->GetXaxis()->SetLabelSize(0.05);
+    h->GetXaxis()->CenterTitle();
+  }
+
   //Overall (all-modules-combined) residual distributions
   hist.h_eresidu_FT  = new TH1D("h_eresidu_FT",  "Overall eresidu FT; eresidu (mm); Counts",  120, -2, 2);
   hist.h_eresidv_FT  = new TH1D("h_eresidv_FT",  "Overall eresidv FT; eresidv (mm); Counts",  120, -2, 2);

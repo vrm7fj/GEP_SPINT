@@ -327,7 +327,6 @@ void gep_physics() {
       h->SetMinimum(0);
       h->SetMaximum(1);
       h->SetStats(0);
-      h->GetXaxis()->SetNdivisions(h->GetNbinsX(), 0, 0, kFALSE);
       h->Draw("COLZ");
       layer_pages[ip].g->Draw("P SAME");
 
