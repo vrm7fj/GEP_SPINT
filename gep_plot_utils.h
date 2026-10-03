@@ -244,13 +244,16 @@ void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
       h->GetXaxis()->SetLabelOffset(0.008);
       h->GetXaxis()->SetTickLength(0.04);
 
-      // Same pattern as ROOT's multipalette.C tutorial: plain draw
-      // (sets up frame/axes; TH1::Draw without "same" clears the pad),
-      // then the TExec, then redraw with "same" in the new palette.
+      // Axes-only first draw (sets up the frame; TH1::Draw without
+      // "same" clears the pad), then the TExec, then the colour map in
+      // that palette, then the axes again on top of the cells. The
+      // first pass must not paint the cells, otherwise an opaque copy
+      // sits underneath and hides any transparency.
       h->SetContour(99);
-      h->Draw("COLZ");
+      h->Draw("AXIS");
       pal_exec->Draw();
       h->Draw("COLZ SAME");
+      h->Draw("AXIS SAME");
       pad->Update();
 
       // Narrow palette tucked into the right margin
