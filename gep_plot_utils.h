@@ -218,13 +218,13 @@ void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
       pad->Draw();
       pad->cd();
 
-      // Per-pad palette: set 1 in inverted greyscale (0 = white,
-      // 1 = black), set 2 in the usual rainbow. A TExec in each pad
+      // Per-pad palette: set 1 in kRainBow at 75% opacity (lighter,
+      // over the white pad), set 2 in the usual opaque kRainBow. A TExec in each pad
       // switches the global palette right before that pad's histogram
       // (and its colour bar) is painted, so both coexist on one page.
       TExec *pal_exec = new TExec(Form("palexec_%d%d", irow, icol),
                                   (icol == 0)
-                                    ? "gStyle->SetPalette(kGreyScale); TColor::InvertPalette();"
+                                    ? "gStyle->SetPalette(kRainBow, 0, 0.75);"
                                     : "gStyle->SetPalette(kRainBow);");
 
       TH2D *h = (TH2D *)src->Clone(Form("%s_cmp_%d%d", src->GetName(), irow, icol));
