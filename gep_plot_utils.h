@@ -8,6 +8,11 @@
 #include "TF1.h"
 #include "TGraphErrors.h"
 #include "TCanvas.h"
+#include "TList.h"
+#include "TPaletteAxis.h"
+#include "TLine.h"
+#include "TLatex.h"
+#include "TPad.h"
 #include "TChain.h"
 #include "TString.h"
 #include "TObjArray.h"
@@ -149,47 +154,115 @@ int AddFilesToChain(TChain *C, const char *filelist) {
   return ntot;
 }
 
-// One page, 4 rows x 2 columns: rows = FT U, FT V, FPP U, FPP V;
-// left column = set 1, right column = set 2. Plain COLZ maps on a
-// common 0-1 (per-column-normalized) z scale -- no stats, no fits.
-// Clones are drawn so the original histograms keep their titles.
+// One 16:9 page (1920x1080, for a slide), 4 rows x 2 columns:
+// rows = FT U, FT V, FPP U, FPP V; left column = set 1, right column
+// = set 2. Pads are placed by hand with tight margins; the set label
+// is written once above each column and a gap + vertical divider
+// separates the two sets. Plain COLZ maps on a common 0-1
+// (per-column-normalized) z scale -- no stats, no fits. Clones are
+// drawn so the original histograms keep their titles/styles.
 void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
                                 const char *label1, const char *label2,
                                 const char *pdfname) {
   const char *rowname[4] = { "FT U-plane", "FT V-plane", "FPP U-plane", "FPP V-plane" };
 
-  gStyle->SetOptStat(0);
-  gStyle->SetOptFit(0);
-  gStyle->SetOptTitle(1);
+  // Layout in canvas NDC
+  const double header_h = 0.045;               // strip for column labels
+  const double gap      = 0.016;               // separation between sets
+  const double col_w    = (1.0 - gap) / 2.0;
+  const double row_h    = (1.0 - header_h) / 4.0;
+  const double colx[2]  = { 0.0, col_w + gap };
+
+  // Pad margins (fractions of each pad)
+  const double lm = 0.050, rm = 0.060, tm = 0.035, bm = 0.155;
 
   c->Clear();
-  c->SetCanvasSize(1600, 2000);
-  c->Divide(2, 4, 0.002, 0.002);
+  c->SetCanvasSize(1920, 1080);
+  c->SetFillColor(kWhite);
+  c->cd();
+
+  // Column headers
+  TLatex header;
+  header.SetNDC();
+  header.SetTextFont(62);
+  header.SetTextSize(0.030);
+  header.SetTextAlign(22);
+  header.DrawLatex(colx[0] + 0.5 * col_w, 1.0 - 0.5 * header_h, label1);
+  header.DrawLatex(colx[1] + 0.5 * col_w, 1.0 - 0.5 * header_h, label2);
+
+  // Divider between the two sets
+  TLine *divider = new TLine(0.5, 0.0, 0.5, 1.0);
+  divider->SetNDC();
+  divider->SetLineColor(kGray + 2);
+  divider->SetLineWidth(3);
+  divider->Draw();
 
   for (int irow = 0; irow < 4; irow++) {
     for (int icol = 0; icol < 2; icol++) {
       TH2D *src = (icol == 0) ? set1[irow] : set2[irow];
       if (!src) continue;
 
-      c->cd(2 * irow + icol + 1);
-      gPad->SetLeftMargin(0.10);
-      gPad->SetRightMargin(0.12);
-      gPad->SetBottomMargin(0.12);
-      gPad->SetTopMargin(0.09);
+      double y2 = 1.0 - header_h - irow * row_h;
+      double y1 = y2 - row_h;
+
+      c->cd();
+      TPad *pad = new TPad(Form("pcmp_%s_%d%d", src->GetName(), irow, icol), "",
+                           colx[icol], y1, colx[icol] + col_w, y2);
+      pad->SetLeftMargin(lm);
+      pad->SetRightMargin(rm);
+      pad->SetTopMargin(tm);
+      pad->SetBottomMargin(bm);
+      pad->SetFrameLineWidth(1);
+      pad->Draw();
+      pad->cd();
 
       TH2D *h = (TH2D *)src->Clone(Form("%s_cmp_%d%d", src->GetName(), irow, icol));
-      h->SetTitle(Form("%s: %s", (icol == 0) ? label1 : label2, rowname[irow]));
+      h->SetTitle("");
       h->SetStats(0);
       h->SetMinimum(0);
       h->SetMaximum(1);
-      h->GetXaxis()->SetTitleSize(0.05);
-      h->GetYaxis()->SetTitleSize(0.05);
-      h->GetXaxis()->SetLabelSize(0.045);
-      h->GetYaxis()->SetLabelSize(0.045);
+
+      h->GetYaxis()->SetTitle("");
+      h->GetYaxis()->SetNdivisions(505);
+      h->GetYaxis()->SetLabelSize(0.085);
+      h->GetYaxis()->SetLabelOffset(0.006);
+
+      h->GetXaxis()->SetTitleSize(0.085);
+      h->GetXaxis()->SetTitleOffset(0.80);
+      h->GetXaxis()->SetLabelSize(0.085);
+      h->GetXaxis()->SetLabelOffset(0.008);
+      h->GetXaxis()->SetTickLength(0.04);
+
       h->Draw("COLZ");
+      pad->Update();
+
+      // Narrow palette tucked into the right margin
+      TPaletteAxis *pal = (TPaletteAxis *)h->GetListOfFunctions()->FindObject("palette");
+      if (pal) {
+        pal->SetX1NDC(1.0 - rm + 0.006);
+        pal->SetX2NDC(1.0 - rm + 0.020);
+        pal->SetY1NDC(bm);
+        pal->SetY2NDC(1.0 - tm);
+        pal->SetLabelSize(0.07);
+        pal->GetAxis()->SetNdivisions(2);
+      }
+
+      // Row label inside the plot (top-left)
+      TPaveText *tag = new TPaveText(lm + 0.008, 1.0 - tm - 0.20, lm + 0.24, 1.0 - tm - 0.03, "NDC");
+      tag->SetFillColorAlpha(kWhite, 0.85);
+      tag->SetBorderSize(0);
+      tag->SetTextFont(42);
+      tag->SetTextSize(0.10);
+      tag->SetTextAlign(12);
+      tag->AddText(Form("%s residual (mm)", rowname[irow]));
+      tag->Draw();
+
+      pad->Modified();
     }
   }
 
+  c->cd();
+  c->Update();
   c->Print(pdfname);
 }
 

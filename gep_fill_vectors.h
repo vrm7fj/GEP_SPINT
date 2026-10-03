@@ -47,7 +47,9 @@ struct GEPData {
 // Fill vectors
 // ============================================================
 
-void FillVectors(TChain *C, GEPData &data) {
+// cut defaults to globalcut (gep_config.h); pass a different TCut
+// to analyse another set with its own selection.
+void FillVectors(TChain *C, GEPData &data, TCut cut = globalcut) {
 
   // ----------------------------------------------------------
   // Branch variables
@@ -140,7 +142,7 @@ void FillVectors(TChain *C, GEPData &data) {
   // ----------------------------------------------------------
 
   TTreeFormula *GlobalCut =
-    new TTreeFormula("GlobalCut", globalcut, C);
+    new TTreeFormula("GlobalCut", cut, C);
 
 
   // ----------------------------------------------------------
@@ -289,7 +291,8 @@ struct PolarimeterData {
 
 };
 
-void FillPolarimeterVectors(TChain *C, PolarimeterData &data) {
+// cut defaults to globalcut_thetafpp (gep_config.h).
+void FillPolarimeterVectors(TChain *C, PolarimeterData &data, TCut cut = globalcut_thetafpp) {
 
   // ----------------------------------------------------------
   // Branch variables
@@ -343,7 +346,7 @@ void FillPolarimeterVectors(TChain *C, PolarimeterData &data) {
   // ----------------------------------------------------------
 
   TTreeFormula *GlobalCutThetaFPP =
-    new TTreeFormula("GlobalCutThetaFPP", globalcut_thetafpp, C);
+    new TTreeFormula("GlobalCutThetaFPP", cut, C);
 
   // ----------------------------------------------------------
   // Event loop

@@ -56,17 +56,6 @@ const char *rootfile_wildcard1 = "/volatile/halla/sbs/adr/gep_replayed/GEP3/mult
 
 const char *rootdir = "/cache/halla/sbs/prod/GEP_REPLAYS/GEP3/LH2/June8_2025/";
 
-// ------------------------------------------------------------
-// Comparison input (set 2). Each string may hold several files or
-// wildcards separated by spaces or commas. Leave rootfile_set2 empty
-// to skip the comparison pages. Both sets can also be passed directly:
-//   root -l -b -q 'gep_physics.C("set1/*.root", "set2/*.root", "label1", "label2")'
-// Set 1 defaults to rootfile_wildcard1 / runlist above.
-// The same globalcut is applied to both sets.
-// ------------------------------------------------------------
-const char *rootfile_set2 = "";
-const char *label_set1    = "Set 1";
-const char *label_set2    = "Set 2";
 
 const int runlist[] = {3628,3629,3635,3637,3639,3640,3641,3642,3643,3650,3654,3655,
                         3657,3658,3659,3661,3662,3664,3665,3667,3671,3672,3674,3675,
@@ -118,6 +107,26 @@ TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&
 //MFFO
 TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&sbs.hcal.nblk[0]>1&&(abs(sbs.tr.vz[0]+0.23)<0.01577*3||abs(sbs.tr.vz[0]+0.1196)<0.01376*3||abs(sbs.tr.vz[0]+0.06531)<0.01276*3||abs(sbs.tr.vz[0]-0.0432)<0.01131*3)&&sbs.gemFPP.track.sclose[0]<0.005";
 
+
+// ============================================================
+// Second input set (for comparison). Every page is produced for
+// set 1 and again for set 2, followed by side-by-side U/V residual
+// comparison pages. Each files string may hold several files or
+// wildcards separated by spaces or commas. Leave rootfile_set2
+// empty to run on set 1 only. Files and labels can also be passed
+// directly:
+//   root -l -b -q 'gep_physics.C("set1/*.root", "set2/*.root", "label1", "label2")'
+// Set 1 defaults to rootfile_wildcard1 / runlist above and uses
+// globalcut / globalcut_thetafpp. Set 2 uses its own cuts below
+// (default: same as set 1 -- replace with a different TCut string
+// to compare selections).
+// ============================================================
+const char *rootfile_set2 = "";
+const char *label_set1    = "Set 1";
+const char *label_set2    = "Set 2";
+
+TCut globalcut_set2          = globalcut;
+TCut globalcut_thetafpp_set2 = globalcut_thetafpp;
 
 // Secondary histogram-fill cuts / windows used downstream (theta range,
 // zclose target window, DOCA cut) -- same numeric values as

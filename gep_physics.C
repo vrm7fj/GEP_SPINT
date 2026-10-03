@@ -7,6 +7,9 @@
 #include "TPaveText.h"
 #include "TMath.h"
 #include "TString.h"
+#include "TCut.h"
+#include "TLatex.h"
+#include "TGraphErrors.h"
 
 #include "gep_config.h"
 #include "gep_fill_vectors.h"
@@ -15,106 +18,63 @@
 #include "gep_plot_utils.h"
 
 
-// files1 / files2: space- or comma-separated files or wildcards.
-// Empty files1 -> runlist / rootfile_wildcard1 from gep_config.h.
-// Empty files2 -> rootfile_set2 from gep_config.h; if that is also
-// empty, the set-1 vs set-2 comparison pages are skipped.
-void gep_physics(TString files1 = "", TString files2 = "",
-                 TString label1 = "", TString label2 = "") {
+// ============================================================
+// Everything produced for one input set (files + cuts)
+// ============================================================
 
-  if (files2 == "") files2 = rootfile_set2;
-  if (label1 == "") label1 = label_set1;
-  if (label2 == "") label2 = label_set2;
-  const bool do_compare = (files2 != "");
+struct SetResults {
+  TString label;
+  TString suffix;     // appended to histogram/function names ("" for set 1)
 
-  gStyle->SetOptStat(1111);
-  gStyle->SetOptFit(1111);
+  GEPHistograms         hist;
+  PolarimeterHistograms polhist;
 
-  // ==========================================================
-  // Create chain
-  // ==========================================================
+  GEPFitResult fit_dx, fit_dy, fit_dxp, fit_dyp, fit_vz, fit_eresidu_FT, fit_eresidv_FT, fit_eresidu_FPP, fit_eresidv_FPP;
 
-  TChain *C = new TChain("T");
+  TGraphErrors *g_eresidu_FT, *g_eresidv_FT, *g_eresidu_FPP, *g_eresidv_FPP, *g_eresidu_FT_layer, *g_eresidv_FT_layer, *g_eresidu_FPP_layer, *g_eresidv_FPP_layer;
+};
 
-  if (files1 != "") {
-    AddFilesToChain(C, files1);
-  } else if(use_runlist){
-    for(int i=0; i<nruns; i++){
-        int nf = C->Add(Form("%sgep5_fullreplay_%d*.root", rootdir, runlist[i]));
-        if(nf==0) cout << "Warning: no files found for run " << runlist[i] << endl;
-    }
-  } else {
-    C->Add(rootfile_wildcard1);
-    //C->Add(rootfile_wildcard2);
-  }
 
-  // ==========================================================
-  // Fill vectors
-  // ==========================================================
+// Fill, fit and normalize everything for one chain with its own cuts.
+SetResults AnalyzeSet(TChain *C, TString label, TString suffix,
+                      TCut cut, TCut cut_thetafpp) {
+
+  SetResults r;
+  r.label  = label;
+  r.suffix = suffix;
+
+  std::cout << "==== " << label << ": " << C->GetNtrees() << " file(s)" << std::endl;
+  std::cout << "     cut:          " << cut.GetTitle() << std::endl;
+  std::cout << "     cut_thetafpp: " << cut_thetafpp.GetTitle() << std::endl;
+
+  // ----------------------------------------------------------
+  // Fill vectors and histograms
+  // ----------------------------------------------------------
 
   GEPData data;
+  FillVectors(C, data, cut);
 
-  FillVectors(C, data);
+  r.hist = CreateHistograms(suffix);
+  FillHistograms(data, r.hist);
 
-  // ==========================================================
-  // Create and fill histograms
-  // ==========================================================
-
-  GEPHistograms hist = CreateHistograms();
-
-  FillHistograms(data, hist);
-
-  // ==========================================================
-  // Comparison set (set 2): same cut, residual histograms only
-  // ==========================================================
-
-  GEPHistograms hist2 = {};
-
-  if (do_compare) {
-    TChain *C2 = new TChain("T");
-    AddFilesToChain(C2, files2);
-
-    std::cout << "Set 2 (" << label2 << "): " << C2->GetNtrees() << " file(s)" << std::endl;
-
-    GEPData data2;
-    FillVectors(C2, data2);
-
-    hist2 = CreateHistograms("_set2");
-    FillHistograms(data2, hist2);
-
-    NormalizeModuleColumns(hist2.h_eresidu_FT_module);
-    NormalizeModuleColumns(hist2.h_eresidv_FT_module);
-    NormalizeModuleColumns(hist2.h_eresidu_FPP_module);
-    NormalizeModuleColumns(hist2.h_eresidv_FPP_module);
-    NormalizeModuleColumns(hist2.h_eresidu_FT_layer);
-    NormalizeModuleColumns(hist2.h_eresidv_FT_layer);
-    NormalizeModuleColumns(hist2.h_eresidu_FPP_layer);
-    NormalizeModuleColumns(hist2.h_eresidv_FPP_layer);
-  }
-
-  // ==========================================================
-  // Fill polarimeter reconstruction vectors/histograms
-  // (ported from polarimeter_recon.C -- separate cut, separate
-  // FPP-besttrack-indexed pass over the same chain)
-  // ==========================================================
-
+  // Polarimeter reconstruction (separate cut, FPP-besttrack-indexed
+  // pass over the same chain)
   PolarimeterData poldata;
+  FillPolarimeterVectors(C, poldata, cut_thetafpp);
 
-  FillPolarimeterVectors(C, poldata);
+  r.polhist = CreatePolarimeterHistograms(suffix);
+  FillPolarimeterHistograms(poldata, r.polhist);
 
-  PolarimeterHistograms polhist = CreatePolarimeterHistograms();
+  // ----------------------------------------------------------
+  // Fits (on raw counts), per-module / per-layer mean +/- sigma
+  // graphs, then per-column normalization for display
+  // ----------------------------------------------------------
 
-  FillPolarimeterHistograms(poldata, polhist);
-
-  // ==========================================================
-  // Fit histograms
-  // ==========================================================
-
-  GEPFitResult fit_dx  = FitPeak(hist.h_dx);
-  GEPFitResult fit_dy  = FitPeak(hist.h_dy);
-  GEPFitResult fit_dxp = FitPeak(hist.h_dxp);
-  GEPFitResult fit_dyp = FitPeak(hist.h_dyp);
-  GEPFitResult fit_vz = FitPeak(hist.h_vz);
+  r.fit_dx = FitPeak(r.hist.h_dx);
+  r.fit_dy = FitPeak(r.hist.h_dy);
+  r.fit_dxp = FitPeak(r.hist.h_dxp);
+  r.fit_dyp = FitPeak(r.hist.h_dyp);
+  r.fit_vz = FitPeak(r.hist.h_vz);
 
   // ==========================================================
   // Fit each module's residual distribution (mean +/- sigma).
@@ -123,33 +83,33 @@ void gep_physics(TString files1 = "", TString files2 = "",
   // .valid == false and are skipped automatically -- nothing fails.
   // ==========================================================
 
-  std::vector<GEPFitResult> fits_eresidu_FT  = FitModuleColumns(hist.h_eresidu_FT_module,  nmod_ft);
-  std::vector<GEPFitResult> fits_eresidv_FT  = FitModuleColumns(hist.h_eresidv_FT_module,  nmod_ft);
-  std::vector<GEPFitResult> fits_eresidu_FPP = FitModuleColumns(hist.h_eresidu_FPP_module, nmod_fpp);
-  std::vector<GEPFitResult> fits_eresidv_FPP = FitModuleColumns(hist.h_eresidv_FPP_module, nmod_fpp);
+  std::vector<GEPFitResult> fits_eresidu_FT = FitModuleColumns(r.hist.h_eresidu_FT_module,  nmod_ft);
+  std::vector<GEPFitResult> fits_eresidv_FT = FitModuleColumns(r.hist.h_eresidv_FT_module,  nmod_ft);
+  std::vector<GEPFitResult> fits_eresidu_FPP = FitModuleColumns(r.hist.h_eresidu_FPP_module, nmod_fpp);
+  std::vector<GEPFitResult> fits_eresidv_FPP = FitModuleColumns(r.hist.h_eresidv_FPP_module, nmod_fpp);
 
   // Same per-column fit, but one column per layer (modules combined
   // into layers via layer_of_mod_ft/fpp in gep_config.h).
-  std::vector<GEPFitResult> fits_eresidu_FT_layer  = FitModuleColumns(hist.h_eresidu_FT_layer,  nlayer_ft);
-  std::vector<GEPFitResult> fits_eresidv_FT_layer  = FitModuleColumns(hist.h_eresidv_FT_layer,  nlayer_ft);
-  std::vector<GEPFitResult> fits_eresidu_FPP_layer = FitModuleColumns(hist.h_eresidu_FPP_layer, nlayer_fpp);
-  std::vector<GEPFitResult> fits_eresidv_FPP_layer = FitModuleColumns(hist.h_eresidv_FPP_layer, nlayer_fpp);
+  std::vector<GEPFitResult> fits_eresidu_FT_layer = FitModuleColumns(r.hist.h_eresidu_FT_layer,  nlayer_ft);
+  std::vector<GEPFitResult> fits_eresidv_FT_layer = FitModuleColumns(r.hist.h_eresidv_FT_layer,  nlayer_ft);
+  std::vector<GEPFitResult> fits_eresidu_FPP_layer = FitModuleColumns(r.hist.h_eresidu_FPP_layer, nlayer_fpp);
+  std::vector<GEPFitResult> fits_eresidv_FPP_layer = FitModuleColumns(r.hist.h_eresidv_FPP_layer, nlayer_fpp);
 
   // Fit the overall (all-modules-combined) U/V residual distributions
-  GEPFitResult fit_eresidu_FT  = FitPeak(hist.h_eresidu_FT);
-  GEPFitResult fit_eresidv_FT  = FitPeak(hist.h_eresidv_FT);
-  GEPFitResult fit_eresidu_FPP = FitPeak(hist.h_eresidu_FPP);
-  GEPFitResult fit_eresidv_FPP = FitPeak(hist.h_eresidv_FPP);
+  r.fit_eresidu_FT = FitPeak(r.hist.h_eresidu_FT);
+  r.fit_eresidv_FT = FitPeak(r.hist.h_eresidv_FT);
+  r.fit_eresidu_FPP = FitPeak(r.hist.h_eresidu_FPP);
+  r.fit_eresidv_FPP = FitPeak(r.hist.h_eresidv_FPP);
 
-  TGraphErrors *g_eresidu_FT  = BuildResidualGraph(fits_eresidu_FT);
-  TGraphErrors *g_eresidv_FT  = BuildResidualGraph(fits_eresidv_FT);
-  TGraphErrors *g_eresidu_FPP = BuildResidualGraph(fits_eresidu_FPP);
-  TGraphErrors *g_eresidv_FPP = BuildResidualGraph(fits_eresidv_FPP);
+  r.g_eresidu_FT = BuildResidualGraph(fits_eresidu_FT);
+  r.g_eresidv_FT = BuildResidualGraph(fits_eresidv_FT);
+  r.g_eresidu_FPP = BuildResidualGraph(fits_eresidu_FPP);
+  r.g_eresidv_FPP = BuildResidualGraph(fits_eresidv_FPP);
 
-  TGraphErrors *g_eresidu_FT_layer  = BuildResidualGraph(fits_eresidu_FT_layer);
-  TGraphErrors *g_eresidv_FT_layer  = BuildResidualGraph(fits_eresidv_FT_layer);
-  TGraphErrors *g_eresidu_FPP_layer = BuildResidualGraph(fits_eresidu_FPP_layer);
-  TGraphErrors *g_eresidv_FPP_layer = BuildResidualGraph(fits_eresidv_FPP_layer);
+  r.g_eresidu_FT_layer = BuildResidualGraph(fits_eresidu_FT_layer);
+  r.g_eresidv_FT_layer = BuildResidualGraph(fits_eresidv_FT_layer);
+  r.g_eresidu_FPP_layer = BuildResidualGraph(fits_eresidu_FPP_layer);
+  r.g_eresidv_FPP_layer = BuildResidualGraph(fits_eresidv_FPP_layer);
 
   // ==========================================================
   // Normalize module-wise 2D residual histograms for display
@@ -157,70 +117,77 @@ void gep_physics(TString files1 = "", TString files2 = "",
   // cosmetic -- done after fitting so it doesn't affect the fits.
   // ==========================================================
 
-  NormalizeModuleColumns(hist.h_eresidu_FT_module);
-  NormalizeModuleColumns(hist.h_eresidv_FT_module);
-  NormalizeModuleColumns(hist.h_eresidu_FPP_module);
-  NormalizeModuleColumns(hist.h_eresidv_FPP_module);
+  NormalizeModuleColumns(r.hist.h_eresidu_FT_module);
+  NormalizeModuleColumns(r.hist.h_eresidv_FT_module);
+  NormalizeModuleColumns(r.hist.h_eresidu_FPP_module);
+  NormalizeModuleColumns(r.hist.h_eresidv_FPP_module);
 
-  NormalizeModuleColumns(hist.h_eresidu_FT_layer);
-  NormalizeModuleColumns(hist.h_eresidv_FT_layer);
-  NormalizeModuleColumns(hist.h_eresidu_FPP_layer);
-  NormalizeModuleColumns(hist.h_eresidv_FPP_layer);
+  NormalizeModuleColumns(r.hist.h_eresidu_FT_layer);
+  NormalizeModuleColumns(r.hist.h_eresidv_FT_layer);
+  NormalizeModuleColumns(r.hist.h_eresidu_FPP_layer);
+  NormalizeModuleColumns(r.hist.h_eresidv_FPP_layer);
 
-  // ==========================================================
-  // ROOT output
-  // ==========================================================
+  return r;
+}
 
-  TFile *fout = new TFile( "gep_physics_output.root", "RECREATE" );
 
-  hist.h_dx->Write();
-  hist.h_dy->Write();
-  hist.h_dxp->Write();
-  hist.h_dyp->Write();
-  hist.h_vz->Write();
-  hist.h_vx->Write();
-  hist.h_vy->Write();
-  hist.h_vxvy->Write();
-  hist.h_eresidu_FT_module->Write();
-  hist.h_eresidv_FT_module->Write();
-  hist.h_eresidu_FPP_module->Write();
-  hist.h_eresidv_FPP_module->Write();
-  hist.h_eresidu_FT_layer->Write();
-  hist.h_eresidv_FT_layer->Write();
-  hist.h_eresidu_FPP_layer->Write();
-  hist.h_eresidv_FPP_layer->Write();
-  hist.h_eresidu_FT->Write();
-  hist.h_eresidv_FT->Write();
-  hist.h_eresidu_FPP->Write();
-  hist.h_eresidv_FPP->Write();
+void WriteSet(const SetResults &r) {
+  r.hist.h_dx->Write();
+  r.hist.h_dy->Write();
+  r.hist.h_dxp->Write();
+  r.hist.h_dyp->Write();
+  r.hist.h_vz->Write();
+  r.hist.h_vx->Write();
+  r.hist.h_vy->Write();
+  r.hist.h_vxvy->Write();
+  r.hist.h_eresidu_FT_module->Write();
+  r.hist.h_eresidv_FT_module->Write();
+  r.hist.h_eresidu_FPP_module->Write();
+  r.hist.h_eresidv_FPP_module->Write();
+  r.hist.h_eresidu_FT_layer->Write();
+  r.hist.h_eresidv_FT_layer->Write();
+  r.hist.h_eresidu_FPP_layer->Write();
+  r.hist.h_eresidv_FPP_layer->Write();
+  r.hist.h_eresidu_FT->Write();
+  r.hist.h_eresidv_FT->Write();
+  r.hist.h_eresidu_FPP->Write();
+  r.hist.h_eresidv_FPP->Write();
+}
 
-  if (do_compare) {
-    hist2.h_eresidu_FT_module->Write();
-    hist2.h_eresidv_FT_module->Write();
-    hist2.h_eresidu_FPP_module->Write();
-    hist2.h_eresidv_FPP_module->Write();
-    hist2.h_eresidu_FT_layer->Write();
-    hist2.h_eresidv_FT_layer->Write();
-    hist2.h_eresidu_FPP_layer->Write();
-    hist2.h_eresidv_FPP_layer->Write();
-  }
 
-  fout->Close();
+// Small set label in the top-left corner of the canvas
+void StampSetLabel(TCanvas *c, const TString &label) {
+  c->cd();
+  TLatex t;
+  t.SetNDC();
+  t.SetTextFont(62);
+  t.SetTextSize(0.022);
+  t.SetTextAlign(13);
+  t.SetTextColor(kGray + 3);
+  t.DrawLatex(0.003, 0.997, label);
+}
 
-  // ==========================================================
-  // PDF output
-  // ==========================================================
+
+// All per-set pages (alignment, target, module-wise residuals,
+// layer-wise residuals, polarimeter kinematics, FT/FPP correlations,
+// chi2/ndf), each stamped with the set label.
+void DrawSetPages(TCanvas *c1, SetResults &r, const char *pdfname) {
+
+  gStyle->SetOptStat(1111);
+  gStyle->SetOptFit(1111);
 
   //---------- Check Alignment
 
-  TCanvas *c1 = new TCanvas( "c1", "GEp Physics", 900, 700 );
-
+  c1->Clear();
+  c1->SetCanvasSize(900, 700);
+  c1->SetLeftMargin(gStyle->GetPadLeftMargin());
+  c1->SetRightMargin(gStyle->GetPadRightMargin());
+  c1->SetBottomMargin(gStyle->GetPadBottomMargin());
+  c1->SetTopMargin(gStyle->GetPadTopMargin());
   c1->Divide(2,2);
 
-  c1->Print("gep_physics_output.pdf[");
-
   c1->cd(1);
-  hist.h_dx->Draw();
+  r.hist.h_dx->Draw();
 
   DrawTextBox({
   "Cuts:",
@@ -233,15 +200,16 @@ void gep_physics(TString files1 = "", TString files2 = "",
   }, 0.12, 0.60, 0.42, 0.88);
 
   c1->cd(2);
-  hist.h_dy->Draw();
+  r.hist.h_dy->Draw();
 
   c1->cd(3);
-  hist.h_dxp->Draw();
+  r.hist.h_dxp->Draw();
 
   c1->cd(4);
-  hist.h_dyp->Draw();
+  r.hist.h_dyp->Draw();
 
-  c1->Print("gep_physics_output.pdf");
+  StampSetLabel(c1, r.label);
+  c1->Print(pdfname);
 
   //---------- Check Target
 
@@ -249,7 +217,7 @@ void gep_physics(TString files1 = "", TString files2 = "",
   c1->Divide(2,2);
 
   c1->cd(1);
-  hist.h_vz->Draw();
+  r.hist.h_vz->Draw();
 
   DrawTextBox({
   "Cuts:",
@@ -261,15 +229,16 @@ void gep_physics(TString files1 = "", TString files2 = "",
   }, 0.12, 0.60, 0.42, 0.88);
 
   c1->cd(2);
-  hist.h_vx->Draw();
+  r.hist.h_vx->Draw();
 
   c1->cd(3);
-  hist.h_vy->Draw();
+  r.hist.h_vy->Draw();
 
   c1->cd(4);
-  hist.h_vxvy->Draw();
+  r.hist.h_vxvy->Draw();
 
-  c1->Print("gep_physics_output.pdf");
+  StampSetLabel(c1, r.label);
+  c1->Print(pdfname);
 
   //---------- Module-wise residuals: FT u/v and FPP u/v, plus overall
   //---------- (all-module) U/V residual distributions with fits, all
@@ -291,62 +260,63 @@ void gep_physics(TString files1 = "", TString files2 = "",
   gStyle->SetOptFit(0);
 
   c1->cd(1);
-  hist.h_eresidu_FT_module->SetMinimum(0);
-  hist.h_eresidu_FT_module->SetMaximum(1);
-  hist.h_eresidu_FT_module->SetStats(0);
-  hist.h_eresidu_FT_module->Draw("COLZ");
-  g_eresidu_FT->Draw("P SAME");
+  r.hist.h_eresidu_FT_module->SetMinimum(0);
+  r.hist.h_eresidu_FT_module->SetMaximum(1);
+  r.hist.h_eresidu_FT_module->SetStats(0);
+  r.hist.h_eresidu_FT_module->Draw("COLZ");
+  r.g_eresidu_FT->Draw("P SAME");
 
   c1->cd(2);
-  hist.h_eresidv_FT_module->SetMinimum(0);
-  hist.h_eresidv_FT_module->SetMaximum(1);
-  hist.h_eresidv_FT_module->SetStats(0);
-  hist.h_eresidv_FT_module->Draw("COLZ");
-  g_eresidv_FT->Draw("P SAME");
+  r.hist.h_eresidv_FT_module->SetMinimum(0);
+  r.hist.h_eresidv_FT_module->SetMaximum(1);
+  r.hist.h_eresidv_FT_module->SetStats(0);
+  r.hist.h_eresidv_FT_module->Draw("COLZ");
+  r.g_eresidv_FT->Draw("P SAME");
 
   c1->cd(3);
-  hist.h_eresidu_FT->SetStats(0);
-  hist.h_eresidu_FT->Draw();
-  if (fit_eresidu_FT.valid) {
-    MakeFitStatsBoxFromResult(hist.h_eresidu_FT, fit_eresidu_FT, 0.55, 0.60, 0.94, 0.90)->Draw();
+  r.hist.h_eresidu_FT->SetStats(0);
+  r.hist.h_eresidu_FT->Draw();
+  if (r.fit_eresidu_FT.valid) {
+    MakeFitStatsBoxFromResult(r.hist.h_eresidu_FT, r.fit_eresidu_FT, 0.55, 0.60, 0.94, 0.90)->Draw();
   }
 
   c1->cd(4);
-  hist.h_eresidv_FT->SetStats(0);
-  hist.h_eresidv_FT->Draw();
-  if (fit_eresidv_FT.valid) {
-    MakeFitStatsBoxFromResult(hist.h_eresidv_FT, fit_eresidv_FT, 0.55, 0.60, 0.94, 0.90)->Draw();
+  r.hist.h_eresidv_FT->SetStats(0);
+  r.hist.h_eresidv_FT->Draw();
+  if (r.fit_eresidv_FT.valid) {
+    MakeFitStatsBoxFromResult(r.hist.h_eresidv_FT, r.fit_eresidv_FT, 0.55, 0.60, 0.94, 0.90)->Draw();
   }
 
   c1->cd(5);
-  hist.h_eresidu_FPP_module->SetMinimum(0);
-  hist.h_eresidu_FPP_module->SetMaximum(1);
-  hist.h_eresidu_FPP_module->SetStats(0);
-  hist.h_eresidu_FPP_module->Draw("COLZ");
-  g_eresidu_FPP->Draw("P SAME");
+  r.hist.h_eresidu_FPP_module->SetMinimum(0);
+  r.hist.h_eresidu_FPP_module->SetMaximum(1);
+  r.hist.h_eresidu_FPP_module->SetStats(0);
+  r.hist.h_eresidu_FPP_module->Draw("COLZ");
+  r.g_eresidu_FPP->Draw("P SAME");
 
   c1->cd(6);
-  hist.h_eresidv_FPP_module->SetMinimum(0);
-  hist.h_eresidv_FPP_module->SetMaximum(1);
-  hist.h_eresidv_FPP_module->SetStats(0);
-  hist.h_eresidv_FPP_module->Draw("COLZ");
-  g_eresidv_FPP->Draw("P SAME");
+  r.hist.h_eresidv_FPP_module->SetMinimum(0);
+  r.hist.h_eresidv_FPP_module->SetMaximum(1);
+  r.hist.h_eresidv_FPP_module->SetStats(0);
+  r.hist.h_eresidv_FPP_module->Draw("COLZ");
+  r.g_eresidv_FPP->Draw("P SAME");
 
   c1->cd(7);
-  hist.h_eresidu_FPP->SetStats(0);
-  hist.h_eresidu_FPP->Draw();
-  if (fit_eresidu_FPP.valid) {
-    MakeFitStatsBoxFromResult(hist.h_eresidu_FPP, fit_eresidu_FPP, 0.55, 0.60, 0.94, 0.90)->Draw();
+  r.hist.h_eresidu_FPP->SetStats(0);
+  r.hist.h_eresidu_FPP->Draw();
+  if (r.fit_eresidu_FPP.valid) {
+    MakeFitStatsBoxFromResult(r.hist.h_eresidu_FPP, r.fit_eresidu_FPP, 0.55, 0.60, 0.94, 0.90)->Draw();
   }
 
   c1->cd(8);
-  hist.h_eresidv_FPP->SetStats(0);
-  hist.h_eresidv_FPP->Draw();
-  if (fit_eresidv_FPP.valid) {
-    MakeFitStatsBoxFromResult(hist.h_eresidv_FPP, fit_eresidv_FPP, 0.55, 0.60, 0.94, 0.90)->Draw();
+  r.hist.h_eresidv_FPP->SetStats(0);
+  r.hist.h_eresidv_FPP->Draw();
+  if (r.fit_eresidv_FPP.valid) {
+    MakeFitStatsBoxFromResult(r.hist.h_eresidv_FPP, r.fit_eresidv_FPP, 0.55, 0.60, 0.94, 0.90)->Draw();
   }
 
-  c1->Print("gep_physics_output.pdf");
+  StampSetLabel(c1, r.label);
+  c1->Print(pdfname);
 
   //---------- Layer-wise residuals: one 2D plot per page
   //---------- (FT u, FT v, FPP u, FPP v). Same per-column
@@ -356,10 +326,10 @@ void gep_physics(TString files1 = "", TString files2 = "",
   {
     struct LayerPage { TH2D *h; TGraphErrors *g; const char *modmap; };
     LayerPage layer_pages[4] = {
-      { hist.h_eresidu_FT_layer,  g_eresidu_FT_layer,  "FT: L0-L5 = m0-m5, L6 = m6-m9, L7 = m10-m13" },
-      { hist.h_eresidv_FT_layer,  g_eresidv_FT_layer,  "FT: L0-L5 = m0-m5, L6 = m6-m9, L7 = m10-m13" },
-      { hist.h_eresidu_FPP_layer, g_eresidu_FPP_layer, "FPP: L_{n} = m_{4n} - m_{4n+3}" },
-      { hist.h_eresidv_FPP_layer, g_eresidv_FPP_layer, "FPP: L_{n} = m_{4n} - m_{4n+3}" }
+      { r.hist.h_eresidu_FT_layer,  r.g_eresidu_FT_layer,  "FT: L0-L5 = m0-m5, L6 = m6-m9, L7 = m10-m13" },
+      { r.hist.h_eresidv_FT_layer,  r.g_eresidv_FT_layer,  "FT: L0-L5 = m0-m5, L6 = m6-m9, L7 = m10-m13" },
+      { r.hist.h_eresidu_FPP_layer, r.g_eresidu_FPP_layer, "FPP: L_{n} = m_{4n} - m_{4n+3}" },
+      { r.hist.h_eresidv_FPP_layer, r.g_eresidv_FPP_layer, "FPP: L_{n} = m_{4n} - m_{4n+3}" }
     };
 
     gStyle->SetOptStat(0);
@@ -384,7 +354,8 @@ void gep_physics(TString files1 = "", TString files2 = "",
 
       DrawTextBox({ layer_pages[ip].modmap }, 0.13, 0.86, 0.60, 0.91);
 
-      c1->Print("gep_physics_output.pdf");
+      StampSetLabel(c1, r.label);
+  c1->Print(pdfname);
     }
 
     // Restore canvas margins for the pages that follow
@@ -392,24 +363,6 @@ void gep_physics(TString files1 = "", TString files2 = "",
     c1->SetRightMargin(gStyle->GetPadRightMargin());
     c1->SetBottomMargin(gStyle->GetPadBottomMargin());
     c1->SetTopMargin(gStyle->GetPadTopMargin());
-  }
-
-  //---------- Set 1 vs set 2 comparison: module-wise page, then
-  //---------- layer-wise page. 4x2 pads, left = set 1, right = set 2,
-  //---------- rows = FT U, FT V, FPP U, FPP V. No stats/fits.
-
-  if (do_compare) {
-    TH2D *mod1[4] = { hist.h_eresidu_FT_module,  hist.h_eresidv_FT_module,
-                      hist.h_eresidu_FPP_module, hist.h_eresidv_FPP_module };
-    TH2D *mod2[4] = { hist2.h_eresidu_FT_module,  hist2.h_eresidv_FT_module,
-                      hist2.h_eresidu_FPP_module, hist2.h_eresidv_FPP_module };
-    DrawResidualComparisonPage(c1, mod1, mod2, label1, label2, "gep_physics_output.pdf");
-
-    TH2D *lay1[4] = { hist.h_eresidu_FT_layer,  hist.h_eresidv_FT_layer,
-                      hist.h_eresidu_FPP_layer, hist.h_eresidv_FPP_layer };
-    TH2D *lay2[4] = { hist2.h_eresidu_FT_layer,  hist2.h_eresidv_FT_layer,
-                      hist2.h_eresidu_FPP_layer, hist2.h_eresidv_FPP_layer };
-    DrawResidualComparisonPage(c1, lay1, lay2, label1, label2, "gep_physics_output.pdf");
   }
 
   //---------- Polarimeter kinematics: theta_FPP, DOCA, z_close,
@@ -440,42 +393,42 @@ void gep_physics(TString files1 = "", TString files2 = "",
   c1->cd(1);
   gPad->SetLogy();
 
-  TLine *lfpp_theta1 = new TLine(fpp_theta_min, 0, fpp_theta_min, polhist.h_theta_fpp->GetMaximum());
-  TLine *lfpp_theta2 = new TLine(fpp_theta_max, 0, fpp_theta_max, polhist.h_theta_fpp->GetMaximum());
+  TLine *lfpp_theta1 = new TLine(fpp_theta_min, 0, fpp_theta_min, r.polhist.h_theta_fpp->GetMaximum());
+  TLine *lfpp_theta2 = new TLine(fpp_theta_max, 0, fpp_theta_max, r.polhist.h_theta_fpp->GetMaximum());
   lfpp_theta1->SetLineWidth(1);
   lfpp_theta2->SetLineWidth(1);
   lfpp_theta1->SetLineColor(kRed+1);
   lfpp_theta2->SetLineColor(kRed+1);
 
-  polhist.h_theta_fpp->Draw("hist");
+  r.polhist.h_theta_fpp->Draw("hist");
   //lfpp_theta1->Draw("SAME");
   //lfpp_theta2->Draw("SAME");
 
-  MakeStatsBox(polhist.h_theta_fpp, 0.62, 0.73, 0.91, 0.90)->Draw();
+  MakeStatsBox(r.polhist.h_theta_fpp, 0.62, 0.73, 0.91, 0.90)->Draw();
 
   c1->cd(2);
   gPad->SetLogy(0);
-  polhist.h_doca->Draw("E1 P");
+  r.polhist.h_doca->Draw("E1 P");
 
   double doca_fit_min = 0.0;
   double doca_fit_max = 0.2;
-  TF1 *f_halfgaus = new TF1("f_halfgaus", "[0]*exp(-0.5*x*x/([1]*[1]))", doca_fit_min, doca_fit_max);
+  TF1 *f_halfgaus = new TF1(Form("f_halfgaus%s", r.suffix.Data()), "[0]*exp(-0.5*x*x/([1]*[1]))", doca_fit_min, doca_fit_max);
   f_halfgaus->SetParNames("A", "#sigma");
-  f_halfgaus->SetParameters(polhist.h_doca->GetMaximum(), 0.10);
+  f_halfgaus->SetParameters(r.polhist.h_doca->GetMaximum(), 0.10);
   f_halfgaus->SetParLimits(0, 1e-6, 1e9);
   f_halfgaus->SetParLimits(1, 1e-5, 5.0);
   f_halfgaus->SetLineColor(kBlue+2);
   f_halfgaus->SetLineWidth(1);
-  polhist.h_doca->Fit(f_halfgaus, "RQ0");
+  r.polhist.h_doca->Fit(f_halfgaus, "RQ0");
 
-  double doca_ymax_hist = polhist.h_doca->GetMaximum();
+  double doca_ymax_hist = r.polhist.h_doca->GetMaximum();
   double doca_ymax_fit  = f_halfgaus->GetMaximum(doca_fit_min, doca_fit_max);
-  polhist.h_doca->SetMaximum(1.2 * (doca_ymax_fit > doca_ymax_hist ? doca_ymax_fit : doca_ymax_hist));
+  r.polhist.h_doca->SetMaximum(1.2 * (doca_ymax_fit > doca_ymax_hist ? doca_ymax_fit : doca_ymax_hist));
 
-  polhist.h_doca->Draw("E1 P");
+  r.polhist.h_doca->Draw("E1 P");
   f_halfgaus->Draw("SAME");
 
-  TLine *lfpp_sclose = new TLine(0.5, 0, 0.5, polhist.h_doca->GetMaximum());
+  TLine *lfpp_sclose = new TLine(0.5, 0, 0.5, r.polhist.h_doca->GetMaximum());
   lfpp_sclose->SetLineWidth(1);
   lfpp_sclose->SetLineColor(kRed+1);
   //lfpp_sclose->Draw("SAME");
@@ -495,18 +448,18 @@ void gep_physics(TString files1 = "", TString files2 = "",
                           f_halfgaus->GetChisquare(), f_halfgaus->GetNDF(),
                           f_halfgaus->GetChisquare() / f_halfgaus->GetNDF()));
   }
-  pt_doca->AddText(Form("N = %.0f", polhist.h_doca->GetEntries()));
+  pt_doca->AddText(Form("N = %.0f", r.polhist.h_doca->GetEntries()));
   pt_doca->Draw("SAME");
 
   c1->cd(3);
-  polhist.h_zclose_all->Draw("hist");
-  polhist.h_zclose_sAng->Draw("hist same");
-  polhist.h_zclose_lAng->Draw("hist same");
+  r.polhist.h_zclose_all->Draw("hist");
+  r.polhist.h_zclose_sAng->Draw("hist same");
+  r.polhist.h_zclose_lAng->Draw("hist same");
 
   TLine *lmin_zclose = new TLine(fpp_zclose_mean - fpp_zclose_sigma, 0,
-                                 fpp_zclose_mean - fpp_zclose_sigma, polhist.h_zclose_all->GetMaximum());
+                                 fpp_zclose_mean - fpp_zclose_sigma, r.polhist.h_zclose_all->GetMaximum());
   TLine *lmax_zclose = new TLine(fpp_zclose_mean + fpp_zclose_sigma, 0,
-                                 fpp_zclose_mean + fpp_zclose_sigma, polhist.h_zclose_all->GetMaximum());
+                                 fpp_zclose_mean + fpp_zclose_sigma, r.polhist.h_zclose_all->GetMaximum());
   lmin_zclose->SetLineWidth(1);
   lmax_zclose->SetLineWidth(1);
   lmin_zclose->SetLineColor(kRed+1);
@@ -518,95 +471,95 @@ void gep_physics(TString files1 = "", TString files2 = "",
   leg_zclose->SetBorderSize(0);
   leg_zclose->SetFillColorAlpha(kWhite, 0.88);
   leg_zclose->SetTextSize(0.05);
-  leg_zclose->AddEntry(polhist.h_zclose_all, "all", "l");
-  leg_zclose->AddEntry(polhist.h_zclose_lAng, Form("#theta_{FPP} > %.2f", fpp_theta_min), "lf");
-  leg_zclose->AddEntry(polhist.h_zclose_sAng, Form("#theta_{FPP} <= %.2f", fpp_theta_min), "lf");
+  leg_zclose->AddEntry(r.polhist.h_zclose_all, "all", "l");
+  leg_zclose->AddEntry(r.polhist.h_zclose_lAng, Form("#theta_{FPP} > %.2f", fpp_theta_min), "lf");
+  leg_zclose->AddEntry(r.polhist.h_zclose_sAng, Form("#theta_{FPP} <= %.2f", fpp_theta_min), "lf");
   leg_zclose->Draw();
 
-  //MakeStatsBox(polhist.h_zclose_all, 0.59, 0.47, 0.93, 0.65)->Draw();
+  //MakeStatsBox(r.polhist.h_zclose_all, 0.59, 0.47, 0.93, 0.65)->Draw();
 
   c1->cd(4);
   gPad->SetRightMargin(0.16);
-  polhist.h_theta_vs_zclose->SetStats(0);
-  polhist.h_theta_vs_zclose->Draw("COLZ");
+  r.polhist.h_theta_vs_zclose->SetStats(0);
+  r.polhist.h_theta_vs_zclose->Draw("COLZ");
 
   //------------------------------------------------------
 
   c1->cd(5);
-  polhist.h_dxp->GetXaxis()->SetRangeUser(-2.0, 4.0);
-  polhist.h_dxp->Draw("hist");
+  r.polhist.h_dxp->GetXaxis()->SetRangeUser(-2.0, 4.0);
+  r.polhist.h_dxp->Draw("hist");
 
   const double peak_fit_half_width = 0.2; // degrees
-  double dxp_fit_mean = polhist.h_dxp->GetXaxis()->GetBinCenter(polhist.h_dxp->GetMaximumBin());
-  double dxp_fit_rms  = polhist.h_dxp->GetRMS();
-  TF1 *fgaus_dxp = new TF1("fgaus_dxp", "gaus",
+  double dxp_fit_mean = r.polhist.h_dxp->GetXaxis()->GetBinCenter(r.polhist.h_dxp->GetMaximumBin());
+  double dxp_fit_rms  = r.polhist.h_dxp->GetRMS();
+  TF1 *fgaus_dxp = new TF1(Form("fgaus_dxp%s", r.suffix.Data()), "gaus",
                            dxp_fit_mean - peak_fit_half_width,
                            dxp_fit_mean + 1.2*peak_fit_half_width);
-  fgaus_dxp->SetParameters(polhist.h_dxp->GetMaximum(), dxp_fit_mean, 0.4);
+  fgaus_dxp->SetParameters(r.polhist.h_dxp->GetMaximum(), dxp_fit_mean, 0.4);
   fgaus_dxp->SetLineColor(kRed+2);
   fgaus_dxp->SetLineWidth(1);
 
-  bool dxp_fit_ok = polhist.h_dxp->GetEntries() > 3 && dxp_fit_rms > 0.0;
+  bool dxp_fit_ok = r.polhist.h_dxp->GetEntries() > 3 && dxp_fit_rms > 0.0;
   if (dxp_fit_ok) {
-    polhist.h_dxp->Fit(fgaus_dxp, "RQ0");
+    r.polhist.h_dxp->Fit(fgaus_dxp, "RQ0");
     fgaus_dxp->Draw("SAME");
   }
 
-  TLine *ldxp = new TLine(0, 0, 0, polhist.h_dxp->GetMaximum());
+  TLine *ldxp = new TLine(0, 0, 0, r.polhist.h_dxp->GetMaximum());
   ldxp->SetLineWidth(1);
   ldxp->SetLineColor(kRed);
   ldxp->Draw("same");
 
   if (dxp_fit_ok) {
-    MakeFitStatsBox(polhist.h_dxp, fgaus_dxp, 0.53, 0.58, 0.94, 0.91)->Draw();
+    MakeFitStatsBox(r.polhist.h_dxp, fgaus_dxp, 0.53, 0.58, 0.94, 0.91)->Draw();
   } else {
-    MakeStatsBox(polhist.h_dxp, 0.62, 0.73, 0.91, 0.90)->Draw();
+    MakeStatsBox(r.polhist.h_dxp, 0.62, 0.73, 0.91, 0.90)->Draw();
   }
 
   //------------------------------------------------------
 
   c1->cd(6);
-  polhist.h_dyp->GetXaxis()->SetRangeUser(-2.0, 4.0);
-  polhist.h_dyp->Draw("hist");
+  r.polhist.h_dyp->GetXaxis()->SetRangeUser(-2.0, 4.0);
+  r.polhist.h_dyp->Draw("hist");
 
-  double dyp_fit_mean = polhist.h_dyp->GetXaxis()->GetBinCenter(polhist.h_dyp->GetMaximumBin());
-  double dyp_fit_rms  = polhist.h_dyp->GetRMS();
-  TF1 *fgaus_dyp = new TF1("fgaus_dyp", "gaus",
+  double dyp_fit_mean = r.polhist.h_dyp->GetXaxis()->GetBinCenter(r.polhist.h_dyp->GetMaximumBin());
+  double dyp_fit_rms  = r.polhist.h_dyp->GetRMS();
+  TF1 *fgaus_dyp = new TF1(Form("fgaus_dyp%s", r.suffix.Data()), "gaus",
                            dyp_fit_mean - 1.2*peak_fit_half_width,
                            dyp_fit_mean + peak_fit_half_width);
-  fgaus_dyp->SetParameters(polhist.h_dyp->GetMaximum(), dyp_fit_mean, 0.4);
+  fgaus_dyp->SetParameters(r.polhist.h_dyp->GetMaximum(), dyp_fit_mean, 0.4);
   fgaus_dyp->SetLineColor(kBlue+2);
   fgaus_dyp->SetLineWidth(1);
 
-  bool dyp_fit_ok = polhist.h_dyp->GetEntries() > 3 && dyp_fit_rms > 0.0;
+  bool dyp_fit_ok = r.polhist.h_dyp->GetEntries() > 3 && dyp_fit_rms > 0.0;
   if (dyp_fit_ok) {
-    polhist.h_dyp->Fit(fgaus_dyp, "RQ0");
+    r.polhist.h_dyp->Fit(fgaus_dyp, "RQ0");
     fgaus_dyp->Draw("SAME");
   }
 
-  TLine *ldyp = new TLine(0, 0, 0, polhist.h_dyp->GetMaximum());
+  TLine *ldyp = new TLine(0, 0, 0, r.polhist.h_dyp->GetMaximum());
   ldyp->SetLineWidth(1);
   ldyp->SetLineColor(kRed);
   ldyp->Draw("same");
 
   if (dyp_fit_ok) {
-    MakeFitStatsBox(polhist.h_dyp, fgaus_dyp, 0.53, 0.58, 0.94, 0.91)->Draw();
+    MakeFitStatsBox(r.polhist.h_dyp, fgaus_dyp, 0.53, 0.58, 0.94, 0.91)->Draw();
   } else {
-    MakeStatsBox(polhist.h_dyp, 0.62, 0.73, 0.91, 0.90)->Draw();
+    MakeStatsBox(r.polhist.h_dyp, 0.62, 0.73, 0.91, 0.90)->Draw();
   }
 
   //------------------------------------------------------
 
   c1->cd(7);
   gPad->SetRightMargin(0.16);
-  polhist.h_dxpdyp->SetStats(0);
-  polhist.h_dxpdyp->Draw("COLZ");
+  r.polhist.h_dxpdyp->SetStats(0);
+  r.polhist.h_dxpdyp->Draw("COLZ");
 
   {
-    double xmin = polhist.h_dxpdyp->GetXaxis()->GetXmin();
-    double xmax = polhist.h_dxpdyp->GetXaxis()->GetXmax();
-    double ymin = polhist.h_dxpdyp->GetYaxis()->GetXmin();
-    double ymax = polhist.h_dxpdyp->GetYaxis()->GetXmax();
+    double xmin = r.polhist.h_dxpdyp->GetXaxis()->GetXmin();
+    double xmax = r.polhist.h_dxpdyp->GetXaxis()->GetXmax();
+    double ymin = r.polhist.h_dxpdyp->GetYaxis()->GetXmin();
+    double ymax = r.polhist.h_dxpdyp->GetYaxis()->GetXmax();
 
     TLine *vertical   = new TLine(0.0, ymin, 0.0, ymax);
     TLine *horizontal = new TLine(xmin, 0.0, xmax, 0.0);
@@ -623,7 +576,8 @@ void gep_physics(TString files1 = "", TString files2 = "",
   c1->cd(8); // left blank -- matches polarimeter_recon.C, where
              // hdxpdyp_allth is filled but never drawn.
 
-  c1->Print("gep_physics_output.pdf");
+  StampSetLabel(c1, r.label);
+  c1->Print(pdfname);
 
   //---------- FT/FPP position-vs-slope correlation maps
 
@@ -639,38 +593,39 @@ void gep_physics(TString files1 = "", TString files2 = "",
   }
 
   c1->cd(1);
-  polhist.h_xxp_ft->SetStats(0);
-  polhist.h_xxp_ft->Draw("COLZ");
+  r.polhist.h_xxp_ft->SetStats(0);
+  r.polhist.h_xxp_ft->Draw("COLZ");
 
   c1->cd(2);
-  polhist.h_xyp_ft->SetStats(0);
-  polhist.h_xyp_ft->Draw("COLZ");
+  r.polhist.h_xyp_ft->SetStats(0);
+  r.polhist.h_xyp_ft->Draw("COLZ");
 
   c1->cd(3);
-  polhist.h_yxp_ft->SetStats(0);
-  polhist.h_yxp_ft->Draw("COLZ");
+  r.polhist.h_yxp_ft->SetStats(0);
+  r.polhist.h_yxp_ft->Draw("COLZ");
 
   c1->cd(4);
-  polhist.h_yyp_ft->SetStats(0);
-  polhist.h_yyp_ft->Draw("COLZ");
+  r.polhist.h_yyp_ft->SetStats(0);
+  r.polhist.h_yyp_ft->Draw("COLZ");
 
   c1->cd(5);
-  polhist.h_xxp_fpp->SetStats(0);
-  polhist.h_xxp_fpp->Draw("COLZ");
+  r.polhist.h_xxp_fpp->SetStats(0);
+  r.polhist.h_xxp_fpp->Draw("COLZ");
 
   c1->cd(6);
-  polhist.h_xyp_fpp->SetStats(0);
-  polhist.h_xyp_fpp->Draw("COLZ");
+  r.polhist.h_xyp_fpp->SetStats(0);
+  r.polhist.h_xyp_fpp->Draw("COLZ");
 
   c1->cd(7);
-  polhist.h_yxp_fpp->SetStats(0);
-  polhist.h_yxp_fpp->Draw("COLZ");
+  r.polhist.h_yxp_fpp->SetStats(0);
+  r.polhist.h_yxp_fpp->Draw("COLZ");
 
   c1->cd(8);
-  polhist.h_yyp_fpp->SetStats(0);
-  polhist.h_yyp_fpp->Draw("COLZ");
+  r.polhist.h_yyp_fpp->SetStats(0);
+  r.polhist.h_yyp_fpp->Draw("COLZ");
 
-  c1->Print("gep_physics_output.pdf");
+  StampSetLabel(c1, r.label);
+  c1->Print(pdfname);
 
   //---------- FT/FPP chi2/ndf
 
@@ -681,22 +636,111 @@ void gep_physics(TString files1 = "", TString files2 = "",
   gStyle->SetOptStat(1111);
 
   c1->cd(1);
-  polhist.h_chi2_ft->SetStats(1);
-  polhist.h_chi2_ft->Draw();
+  r.polhist.h_chi2_ft->SetStats(1);
+  r.polhist.h_chi2_ft->Draw();
 
   c1->cd(2);
-  polhist.h_chi2_fpp->SetStats(1);
-  polhist.h_chi2_fpp->Draw();
+  r.polhist.h_chi2_fpp->SetStats(1);
+  r.polhist.h_chi2_fpp->Draw();
 
-  c1->Print("gep_physics_output.pdf");
+  StampSetLabel(c1, r.label);
+  c1->Print(pdfname);
+}
 
-  c1->Print("gep_physics_output.pdf]");
+
+// files1 / files2: space- or comma-separated files or wildcards.
+// Empty files1 -> runlist / rootfile_wildcard1 from gep_config.h.
+// Empty files2 -> rootfile_set2 from gep_config.h; if that is also
+// empty, only set 1 is analysed.
+// Set 1 uses globalcut / globalcut_thetafpp, set 2 uses
+// globalcut_set2 / globalcut_thetafpp_set2 (gep_config.h).
+void gep_physics(TString files1 = "", TString files2 = "",
+                 TString label1 = "", TString label2 = "") {
+
+  if (files2 == "") files2 = rootfile_set2;
+  if (label1 == "") label1 = label_set1;
+  if (label2 == "") label2 = label_set2;
+  const bool do_compare = (files2 != "");
+
+  const char *pdfname = "gep_physics_output.pdf";
+
+  // ==========================================================
+  // Chains
+  // ==========================================================
+
+  TChain *C = new TChain("T");
+
+  if (files1 != "") {
+    AddFilesToChain(C, files1);
+  } else if(use_runlist){
+    for(int i=0; i<nruns; i++){
+        int nf = C->Add(Form("%sgep5_fullreplay_%d*.root", rootdir, runlist[i]));
+        if(nf==0) cout << "Warning: no files found for run " << runlist[i] << endl;
+    }
+  } else {
+    C->Add(rootfile_wildcard1);
+  }
+
+  TChain *C2 = nullptr;
+  if (do_compare) {
+    C2 = new TChain("T");
+    AddFilesToChain(C2, files2);
+  }
+
+  // ==========================================================
+  // Analyse each set with its own cuts
+  // ==========================================================
+
+  SetResults set1 = AnalyzeSet(C, label1, "", globalcut, globalcut_thetafpp);
+
+  SetResults set2;
+  if (do_compare) {
+    set2 = AnalyzeSet(C2, label2, "_set2", globalcut_set2, globalcut_thetafpp_set2);
+  }
+
+  // ==========================================================
+  // ROOT output (set 2 histograms carry a _set2 suffix)
+  // ==========================================================
+
+  TFile *fout = new TFile( "gep_physics_output.root", "RECREATE" );
+  WriteSet(set1);
+  if (do_compare) WriteSet(set2);
+  fout->Close();
+
+  // ==========================================================
+  // PDF output: all set-1 pages, all set-2 pages, then the
+  // side-by-side U/V residual comparison pages (module-wise,
+  // layer-wise; 1920x1080, no stats).
+  // ==========================================================
+
+  TCanvas *c1 = new TCanvas( "c1", "GEp Physics", 900, 700 );
+  c1->Print(Form("%s[", pdfname));
+
+  DrawSetPages(c1, set1, pdfname);
+
+  if (do_compare) {
+    DrawSetPages(c1, set2, pdfname);
+
+    TH2D *mod1[4] = { set1.hist.h_eresidu_FT_module,  set1.hist.h_eresidv_FT_module,
+                      set1.hist.h_eresidu_FPP_module, set1.hist.h_eresidv_FPP_module };
+    TH2D *mod2[4] = { set2.hist.h_eresidu_FT_module,  set2.hist.h_eresidv_FT_module,
+                      set2.hist.h_eresidu_FPP_module, set2.hist.h_eresidv_FPP_module };
+    DrawResidualComparisonPage(c1, mod1, mod2, label1, label2, pdfname);
+
+    TH2D *lay1[4] = { set1.hist.h_eresidu_FT_layer,  set1.hist.h_eresidv_FT_layer,
+                      set1.hist.h_eresidu_FPP_layer, set1.hist.h_eresidv_FPP_layer };
+    TH2D *lay2[4] = { set2.hist.h_eresidu_FT_layer,  set2.hist.h_eresidv_FT_layer,
+                      set2.hist.h_eresidu_FPP_layer, set2.hist.h_eresidv_FPP_layer };
+    DrawResidualComparisonPage(c1, lay1, lay2, label1, label2, pdfname);
+  }
+
+  c1->Print(Form("%s]", pdfname));
 
   std::cout
     << "Output written to:"
     << std::endl
     << "  gep_physics_output.root"
     << std::endl
-    << "  gep_physics_output.pdf"
+    << "  " << pdfname
     << std::endl;
 }
