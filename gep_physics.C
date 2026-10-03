@@ -6,6 +6,7 @@
 #include "TF1.h"
 #include "TPaveText.h"
 #include "TMath.h"
+#include "TString.h"
 
 #include "gep_config.h"
 #include "gep_fill_vectors.h"
@@ -14,7 +15,17 @@
 #include "gep_plot_utils.h"
 
 
-void gep_physics() {
+// files1 / files2: space- or comma-separated files or wildcards.
+// Empty files1 -> runlist / rootfile_wildcard1 from gep_config.h.
+// Empty files2 -> rootfile_set2 from gep_config.h; if that is also
+// empty, the set-1 vs set-2 comparison pages are skipped.
+void gep_physics(TString files1 = "", TString files2 = "",
+                 TString label1 = "", TString label2 = "") {
+
+  if (files2 == "") files2 = rootfile_set2;
+  if (label1 == "") label1 = label_set1;
+  if (label2 == "") label2 = label_set2;
+  const bool do_compare = (files2 != "");
 
   gStyle->SetOptStat(1111);
   gStyle->SetOptFit(1111);
@@ -25,7 +36,9 @@ void gep_physics() {
 
   TChain *C = new TChain("T");
 
-  if(use_runlist){
+  if (files1 != "") {
+    AddFilesToChain(C, files1);
+  } else if(use_runlist){
     for(int i=0; i<nruns; i++){
         int nf = C->Add(Form("%sgep5_fullreplay_%d*.root", rootdir, runlist[i]));
         if(nf==0) cout << "Warning: no files found for run " << runlist[i] << endl;
@@ -50,6 +63,34 @@ void gep_physics() {
   GEPHistograms hist = CreateHistograms();
 
   FillHistograms(data, hist);
+
+  // ==========================================================
+  // Comparison set (set 2): same cut, residual histograms only
+  // ==========================================================
+
+  GEPHistograms hist2 = {};
+
+  if (do_compare) {
+    TChain *C2 = new TChain("T");
+    AddFilesToChain(C2, files2);
+
+    std::cout << "Set 2 (" << label2 << "): " << C2->GetNtrees() << " file(s)" << std::endl;
+
+    GEPData data2;
+    FillVectors(C2, data2);
+
+    hist2 = CreateHistograms("_set2");
+    FillHistograms(data2, hist2);
+
+    NormalizeModuleColumns(hist2.h_eresidu_FT_module);
+    NormalizeModuleColumns(hist2.h_eresidv_FT_module);
+    NormalizeModuleColumns(hist2.h_eresidu_FPP_module);
+    NormalizeModuleColumns(hist2.h_eresidv_FPP_module);
+    NormalizeModuleColumns(hist2.h_eresidu_FT_layer);
+    NormalizeModuleColumns(hist2.h_eresidv_FT_layer);
+    NormalizeModuleColumns(hist2.h_eresidu_FPP_layer);
+    NormalizeModuleColumns(hist2.h_eresidv_FPP_layer);
+  }
 
   // ==========================================================
   // Fill polarimeter reconstruction vectors/histograms
@@ -152,6 +193,17 @@ void gep_physics() {
   hist.h_eresidv_FT->Write();
   hist.h_eresidu_FPP->Write();
   hist.h_eresidv_FPP->Write();
+
+  if (do_compare) {
+    hist2.h_eresidu_FT_module->Write();
+    hist2.h_eresidv_FT_module->Write();
+    hist2.h_eresidu_FPP_module->Write();
+    hist2.h_eresidv_FPP_module->Write();
+    hist2.h_eresidu_FT_layer->Write();
+    hist2.h_eresidv_FT_layer->Write();
+    hist2.h_eresidu_FPP_layer->Write();
+    hist2.h_eresidv_FPP_layer->Write();
+  }
 
   fout->Close();
 
@@ -340,6 +392,24 @@ void gep_physics() {
     c1->SetRightMargin(gStyle->GetPadRightMargin());
     c1->SetBottomMargin(gStyle->GetPadBottomMargin());
     c1->SetTopMargin(gStyle->GetPadTopMargin());
+  }
+
+  //---------- Set 1 vs set 2 comparison: module-wise page, then
+  //---------- layer-wise page. 4x2 pads, left = set 1, right = set 2,
+  //---------- rows = FT U, FT V, FPP U, FPP V. No stats/fits.
+
+  if (do_compare) {
+    TH2D *mod1[4] = { hist.h_eresidu_FT_module,  hist.h_eresidv_FT_module,
+                      hist.h_eresidu_FPP_module, hist.h_eresidv_FPP_module };
+    TH2D *mod2[4] = { hist2.h_eresidu_FT_module,  hist2.h_eresidv_FT_module,
+                      hist2.h_eresidu_FPP_module, hist2.h_eresidv_FPP_module };
+    DrawResidualComparisonPage(c1, mod1, mod2, label1, label2, "gep_physics_output.pdf");
+
+    TH2D *lay1[4] = { hist.h_eresidu_FT_layer,  hist.h_eresidv_FT_layer,
+                      hist.h_eresidu_FPP_layer, hist.h_eresidv_FPP_layer };
+    TH2D *lay2[4] = { hist2.h_eresidu_FT_layer,  hist2.h_eresidv_FT_layer,
+                      hist2.h_eresidu_FPP_layer, hist2.h_eresidv_FPP_layer };
+    DrawResidualComparisonPage(c1, lay1, lay2, label1, label2, "gep_physics_output.pdf");
   }
 
   //---------- Polarimeter kinematics: theta_FPP, DOCA, z_close,

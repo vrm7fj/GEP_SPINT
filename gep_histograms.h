@@ -3,6 +3,7 @@
 
 #include "TH1D.h"
 #include "TH2D.h"
+#include "TString.h"
 #include "gep_fill_vectors.h"
 #include "gep_config.h"
 
@@ -34,30 +35,32 @@ struct GEPHistograms {
   TH1D *h_eresidv_FPP;
 };
 
-GEPHistograms CreateHistograms() {
+// suffix is appended to every histogram name so that several sets
+// (e.g. a comparison set) can coexist without ROOT name clashes.
+GEPHistograms CreateHistograms(const char *suffix = "") {
   GEPHistograms hist;
-  hist.h_dx  = new TH1D("h_dx",  "Track #DeltaX;x_{FT} - x_{FPP} (m);Counts", 200, -0.1, 0.1);
-  hist.h_dy  = new TH1D("h_dy",  "Track #DeltaY;y_{FT} - y_{FPP} (m);Counts", 200, -0.1, 0.1);
-  hist.h_dxp = new TH1D("h_dxp", "Track #DeltaX';x'_{FT} - x'_{FPP};Counts", 200, -0.05, 0.05);
-  hist.h_dyp = new TH1D("h_dyp", "Track #DeltaY';y'_{FT} - y'_{FPP};Counts", 200, -0.05, 0.05);
+  hist.h_dx  = new TH1D(TString("h_dx") + suffix,  "Track #DeltaX;x_{FT} - x_{FPP} (m);Counts", 200, -0.1, 0.1);
+  hist.h_dy  = new TH1D(TString("h_dy") + suffix,  "Track #DeltaY;y_{FT} - y_{FPP} (m);Counts", 200, -0.1, 0.1);
+  hist.h_dxp = new TH1D(TString("h_dxp") + suffix, "Track #DeltaX';x'_{FT} - x'_{FPP};Counts", 200, -0.05, 0.05);
+  hist.h_dyp = new TH1D(TString("h_dyp") + suffix, "Track #DeltaY';y'_{FT} - y'_{FPP};Counts", 200, -0.05, 0.05);
 
   //Target vertex
-  hist.h_vz = new TH1D("h_vz", "Target vz; vz (m); Counts", 100, -0.5, 0.5);
-  hist.h_vx = new TH1D("h_vx", "Target vx; vx (#mum); Counts", 100, 24.7, 25.7);
-  hist.h_vy = new TH1D("h_vy", "Target vy; vy (#mum); Counts", 100, -52.8, -52.0);
-  hist.h_vxvy = new TH2D("h_vxvy", "Target vx vs vy; vx (#mum);vy (#mum)", 100, 24.7, 25.7, 100, -52.8, -52.0);
+  hist.h_vz = new TH1D(TString("h_vz") + suffix, "Target vz; vz (m); Counts", 100, -0.5, 0.5);
+  hist.h_vx = new TH1D(TString("h_vx") + suffix, "Target vx; vx (#mum); Counts", 100, 24.7, 25.7);
+  hist.h_vy = new TH1D(TString("h_vy") + suffix, "Target vy; vy (#mum); Counts", 100, -52.8, -52.0);
+  hist.h_vxvy = new TH2D(TString("h_vxvy") + suffix, "Target vx vs vy; vx (#mum);vy (#mum)", 100, 24.7, 25.7, 100, -52.8, -52.0);
 
   //Module-wise residual histograms: x-axis = module index, y-axis = residual
-  hist.h_eresidu_FT_module  = new TH2D("h_eresidu_FT_module",  "eresidu FT; module; eresidu",  nmod_ft,  -0.5, nmod_ft-0.5,  200, -2, 2);
-  hist.h_eresidv_FT_module  = new TH2D("h_eresidv_FT_module",  "eresidv FT; module; eresidv",  nmod_ft,  -0.5, nmod_ft-0.5,  200, -2, 2);
-  hist.h_eresidu_FPP_module = new TH2D("h_eresidu_FPP_module", "eresidu FPP; module; eresidu", nmod_fpp, -0.5, nmod_fpp-0.5, 200, -2, 2);
-  hist.h_eresidv_FPP_module = new TH2D("h_eresidv_FPP_module", "eresidv FPP; module; eresidv", nmod_fpp, -0.5, nmod_fpp-0.5, 200, -2, 2);
+  hist.h_eresidu_FT_module  = new TH2D(TString("h_eresidu_FT_module") + suffix,  "eresidu FT; module; eresidu",  nmod_ft,  -0.5, nmod_ft-0.5,  200, -2, 2);
+  hist.h_eresidv_FT_module  = new TH2D(TString("h_eresidv_FT_module") + suffix,  "eresidv FT; module; eresidv",  nmod_ft,  -0.5, nmod_ft-0.5,  200, -2, 2);
+  hist.h_eresidu_FPP_module = new TH2D(TString("h_eresidu_FPP_module") + suffix, "eresidu FPP; module; eresidu", nmod_fpp, -0.5, nmod_fpp-0.5, 200, -2, 2);
+  hist.h_eresidv_FPP_module = new TH2D(TString("h_eresidv_FPP_module") + suffix, "eresidv FPP; module; eresidv", nmod_fpp, -0.5, nmod_fpp-0.5, 200, -2, 2);
 
   //Layer-wise residual histograms: x-axis = layer index, y-axis = residual
-  hist.h_eresidu_FT_layer  = new TH2D("h_eresidu_FT_layer",  "FT layer-wise eresidu; layer; eresidu (mm)",  nlayer_ft,  -0.5, nlayer_ft-0.5,  200, -2, 2);
-  hist.h_eresidv_FT_layer  = new TH2D("h_eresidv_FT_layer",  "FT layer-wise eresidv; layer; eresidv (mm)",  nlayer_ft,  -0.5, nlayer_ft-0.5,  200, -2, 2);
-  hist.h_eresidu_FPP_layer = new TH2D("h_eresidu_FPP_layer", "FPP layer-wise eresidu; layer; eresidu (mm)", nlayer_fpp, -0.5, nlayer_fpp-0.5, 200, -2, 2);
-  hist.h_eresidv_FPP_layer = new TH2D("h_eresidv_FPP_layer", "FPP layer-wise eresidv; layer; eresidv (mm)", nlayer_fpp, -0.5, nlayer_fpp-0.5, 200, -2, 2);
+  hist.h_eresidu_FT_layer  = new TH2D(TString("h_eresidu_FT_layer") + suffix,  "FT layer-wise eresidu; layer; eresidu (mm)",  nlayer_ft,  -0.5, nlayer_ft-0.5,  200, -2, 2);
+  hist.h_eresidv_FT_layer  = new TH2D(TString("h_eresidv_FT_layer") + suffix,  "FT layer-wise eresidv; layer; eresidv (mm)",  nlayer_ft,  -0.5, nlayer_ft-0.5,  200, -2, 2);
+  hist.h_eresidu_FPP_layer = new TH2D(TString("h_eresidu_FPP_layer") + suffix, "FPP layer-wise eresidu; layer; eresidu (mm)", nlayer_fpp, -0.5, nlayer_fpp-0.5, 200, -2, 2);
+  hist.h_eresidv_FPP_layer = new TH2D(TString("h_eresidv_FPP_layer") + suffix, "FPP layer-wise eresidv; layer; eresidv (mm)", nlayer_fpp, -0.5, nlayer_fpp-0.5, 200, -2, 2);
 
   // Label each layer bin at its centre ("0", "1", ...) instead of
   // numeric ticks at the bin edges (-0.5, 0.5, ...).
@@ -72,10 +75,10 @@ GEPHistograms CreateHistograms() {
   }
 
   //Overall (all-modules-combined) residual distributions
-  hist.h_eresidu_FT  = new TH1D("h_eresidu_FT",  "Overall eresidu FT; eresidu (mm); Counts",  120, -2, 2);
-  hist.h_eresidv_FT  = new TH1D("h_eresidv_FT",  "Overall eresidv FT; eresidv (mm); Counts",  120, -2, 2);
-  hist.h_eresidu_FPP = new TH1D("h_eresidu_FPP", "Overall eresidu FPP; eresidu (mm); Counts", 120, -2, 2);
-  hist.h_eresidv_FPP = new TH1D("h_eresidv_FPP", "Overall eresidv FPP; eresidv (mm); Counts", 120, -2, 2);
+  hist.h_eresidu_FT  = new TH1D(TString("h_eresidu_FT") + suffix,  "Overall eresidu FT; eresidu (mm); Counts",  120, -2, 2);
+  hist.h_eresidv_FT  = new TH1D(TString("h_eresidv_FT") + suffix,  "Overall eresidv FT; eresidv (mm); Counts",  120, -2, 2);
+  hist.h_eresidu_FPP = new TH1D(TString("h_eresidu_FPP") + suffix, "Overall eresidu FPP; eresidu (mm); Counts", 120, -2, 2);
+  hist.h_eresidv_FPP = new TH1D(TString("h_eresidv_FPP") + suffix, "Overall eresidv FPP; eresidv (mm); Counts", 120, -2, 2);
 
   return hist;
 }

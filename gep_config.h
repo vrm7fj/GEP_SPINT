@@ -56,6 +56,18 @@ const char *rootfile_wildcard1 = "/volatile/halla/sbs/adr/gep_replayed/GEP3/mult
 
 const char *rootdir = "/cache/halla/sbs/prod/GEP_REPLAYS/GEP3/LH2/June8_2025/";
 
+// ------------------------------------------------------------
+// Comparison input (set 2). Each string may hold several files or
+// wildcards separated by spaces or commas. Leave rootfile_set2 empty
+// to skip the comparison pages. Both sets can also be passed directly:
+//   root -l -b -q 'gep_physics.C("set1/*.root", "set2/*.root", "label1", "label2")'
+// Set 1 defaults to rootfile_wildcard1 / runlist above.
+// The same globalcut is applied to both sets.
+// ------------------------------------------------------------
+const char *rootfile_set2 = "";
+const char *label_set1    = "Set 1";
+const char *label_set2    = "Set 2";
+
 const int runlist[] = {3628,3629,3635,3637,3639,3640,3641,3642,3643,3650,3654,3655,
                         3657,3658,3659,3661,3662,3664,3665,3667,3671,3672,3674,3675,
                         3676,3792,3793,3796,3799,3800,3803,3805,3816,3819,3821,3822,3825};

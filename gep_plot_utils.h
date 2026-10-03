@@ -7,6 +7,13 @@
 #include "TH2D.h"
 #include "TF1.h"
 #include "TGraphErrors.h"
+#include "TCanvas.h"
+#include "TChain.h"
+#include "TString.h"
+#include "TObjArray.h"
+#include "TObjString.h"
+#include "TStyle.h"
+#include <iostream>
 #include <vector>
 #include <string>
 
@@ -125,6 +132,65 @@ TPaveText *MakeFitStatsBoxFromResult(TH1 *hist, const GEPFitResult &fit, double 
                       fit.chi2, fit.ndf, fit.chi2 / fit.ndf));
   }
   return box;
+}
+
+// Add every file / wildcard in a space- or comma-separated list to a
+// chain. Returns the number of files added.
+int AddFilesToChain(TChain *C, const char *filelist) {
+  int ntot = 0;
+  TObjArray *tok = TString(filelist).Tokenize(" ,");
+  for (int i = 0; i < tok->GetEntries(); i++) {
+    TString pattern = ((TObjString *)tok->At(i))->GetString();
+    int nf = C->Add(pattern);
+    if (nf == 0) std::cout << "Warning: no files found for " << pattern << std::endl;
+    ntot += nf;
+  }
+  delete tok;
+  return ntot;
+}
+
+// One page, 4 rows x 2 columns: rows = FT U, FT V, FPP U, FPP V;
+// left column = set 1, right column = set 2. Plain COLZ maps on a
+// common 0-1 (per-column-normalized) z scale -- no stats, no fits.
+// Clones are drawn so the original histograms keep their titles.
+void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
+                                const char *label1, const char *label2,
+                                const char *pdfname) {
+  const char *rowname[4] = { "FT U-plane", "FT V-plane", "FPP U-plane", "FPP V-plane" };
+
+  gStyle->SetOptStat(0);
+  gStyle->SetOptFit(0);
+  gStyle->SetOptTitle(1);
+
+  c->Clear();
+  c->SetCanvasSize(1600, 2000);
+  c->Divide(2, 4, 0.002, 0.002);
+
+  for (int irow = 0; irow < 4; irow++) {
+    for (int icol = 0; icol < 2; icol++) {
+      TH2D *src = (icol == 0) ? set1[irow] : set2[irow];
+      if (!src) continue;
+
+      c->cd(2 * irow + icol + 1);
+      gPad->SetLeftMargin(0.10);
+      gPad->SetRightMargin(0.12);
+      gPad->SetBottomMargin(0.12);
+      gPad->SetTopMargin(0.09);
+
+      TH2D *h = (TH2D *)src->Clone(Form("%s_cmp_%d%d", src->GetName(), irow, icol));
+      h->SetTitle(Form("%s: %s", (icol == 0) ? label1 : label2, rowname[irow]));
+      h->SetStats(0);
+      h->SetMinimum(0);
+      h->SetMaximum(1);
+      h->GetXaxis()->SetTitleSize(0.05);
+      h->GetYaxis()->SetTitleSize(0.05);
+      h->GetXaxis()->SetLabelSize(0.045);
+      h->GetYaxis()->SetLabelSize(0.045);
+      h->Draw("COLZ");
+    }
+  }
+
+  c->Print(pdfname);
 }
 
 #endif
