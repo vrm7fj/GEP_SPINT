@@ -22,6 +22,12 @@ const int nmod_fpp = 32;
 //   FT : m0..m5 -> L0..L5 (one module each), m6-m9 -> L6, m10-m13 -> L7
 //   FPP: 4 modules per layer, m(4L)..m(4L+3) -> L
 // ------------------------------------------------------------
+// Displayed y-range (mm) of the 2D residual maps (module-wise,
+// layer-wise and comparison pages). Display only: histograms are
+// still booked over -2..2 mm and fits use the full range.
+const double resid_plot_min = -1.25;
+const double resid_plot_max =  1.25;
+
 const int nlayer_ft  = 8;
 const int nlayer_fpp = 8;
 

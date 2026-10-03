@@ -173,6 +173,14 @@ void StampSetLabel(TCanvas *c, const TString &label) {
 // chi2/ndf), each stamped with the set label.
 void DrawSetPages(TCanvas *c1, SetResults &r, const char *pdfname) {
 
+  // Displayed residual range for all 2D residual maps (fits and
+  // normalization were already done on the full range)
+  TH2D *resid_maps[8] = { r.hist.h_eresidu_FT_module, r.hist.h_eresidv_FT_module,
+                          r.hist.h_eresidu_FPP_module, r.hist.h_eresidv_FPP_module,
+                          r.hist.h_eresidu_FT_layer, r.hist.h_eresidv_FT_layer,
+                          r.hist.h_eresidu_FPP_layer, r.hist.h_eresidv_FPP_layer };
+  for (TH2D *h : resid_maps) h->GetYaxis()->SetRangeUser(resid_plot_min, resid_plot_max);
+
   gStyle->SetOptStat(1111);
   gStyle->SetOptFit(1111);
 
