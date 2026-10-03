@@ -160,7 +160,7 @@ int AddFilesToChain(TChain *C, const char *filelist) {
 // rows = FT U, FT V, FPP U, FPP V; left column = set 1, right column
 // = set 2. Pads are placed by hand with tight margins; the set label
 // is written once above each column and a gap + vertical divider
-// separates the two sets. Plain COLZ maps on a common 0-1
+// separates the two sets. Plain COL maps (no colour bar) on a common 0-1
 // (per-column-normalized) z scale -- no stats, no fits. Clones are
 // drawn so the original histograms keep their titles/styles.
 void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
@@ -176,7 +176,7 @@ void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
   const double colx[2]  = { 0.0, col_w + gap };
 
   // Pad margins (fractions of each pad)
-  const double lm = 0.050, rm = 0.060, tm = 0.035, bm = 0.155;
+  const double lm = 0.050, rm = 0.015, tm = 0.035, bm = 0.155;
 
   c->Clear();
   c->SetCanvasSize(1920, 1080);
@@ -218,13 +218,13 @@ void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
       pad->Draw();
       pad->cd();
 
-      // Per-pad palette: set 1 in kRainBow at 75% opacity (lighter,
+      // Per-pad palette: set 1 in kRainBow at 80% opacity (lighter,
       // over the white pad), set 2 in the usual opaque kRainBow. A TExec in each pad
       // switches the global palette right before that pad's histogram
-      // (and its colour bar) is painted, so both coexist on one page.
+      // is painted, so both coexist on one page.
       TExec *pal_exec = new TExec(Form("palexec_%d%d", irow, icol),
                                   (icol == 0)
-                                    ? "gStyle->SetPalette(kRainBow, 0, 0.75);"
+                                    ? "gStyle->SetPalette(kRainBow, 0, 0.80);"
                                     : "gStyle->SetPalette(kRainBow);");
 
       TH2D *h = (TH2D *)src->Clone(Form("%s_cmp_%d%d", src->GetName(), irow, icol));
@@ -252,20 +252,9 @@ void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
       h->SetContour(99);
       h->Draw("AXIS");
       pal_exec->Draw();
-      h->Draw("COLZ SAME");
+      h->Draw("COL SAME");
       h->Draw("AXIS SAME");
       pad->Update();
-
-      // Narrow palette tucked into the right margin
-      TPaletteAxis *pal = (TPaletteAxis *)h->GetListOfFunctions()->FindObject("palette");
-      if (pal) {
-        pal->SetX1NDC(1.0 - rm + 0.006);
-        pal->SetX2NDC(1.0 - rm + 0.020);
-        pal->SetY1NDC(bm);
-        pal->SetY2NDC(1.0 - tm);
-        pal->SetLabelSize(0.07);
-        pal->GetAxis()->SetNdivisions(2);
-      }
 
       // Row label inside the plot (top-left)
       TPaveText *tag = new TPaveText(lm + 0.008, 1.0 - tm - 0.20, lm + 0.34, 1.0 - tm - 0.03, "NDC");
