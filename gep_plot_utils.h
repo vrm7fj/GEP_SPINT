@@ -8,6 +8,8 @@
 #include "TF1.h"
 #include "TGraphErrors.h"
 #include "TCanvas.h"
+#include "TColor.h"
+#include "TExec.h"
 #include "TList.h"
 #include "TPaletteAxis.h"
 #include "TLine.h"
@@ -216,6 +218,15 @@ void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
       pad->Draw();
       pad->cd();
 
+      // Per-pad palette: set 1 in inverted greyscale (0 = white,
+      // 1 = black), set 2 in the usual rainbow. A TExec in each pad
+      // switches the global palette right before that pad's histogram
+      // (and its colour bar) is painted, so both coexist on one page.
+      TExec *pal_exec = new TExec(Form("palexec_%d%d", irow, icol),
+                                  (icol == 0)
+                                    ? "gStyle->SetPalette(kGreyScale); TColor::InvertPalette();"
+                                    : "gStyle->SetPalette(kRainBow);");
+
       TH2D *h = (TH2D *)src->Clone(Form("%s_cmp_%d%d", src->GetName(), irow, icol));
       h->SetTitle("");
       h->SetStats(0);
@@ -233,7 +244,13 @@ void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
       h->GetXaxis()->SetLabelOffset(0.008);
       h->GetXaxis()->SetTickLength(0.04);
 
+      // Same pattern as ROOT's multipalette.C tutorial: plain draw
+      // (sets up frame/axes; TH1::Draw without "same" clears the pad),
+      // then the TExec, then redraw with "same" in the new palette.
+      h->SetContour(99);
       h->Draw("COLZ");
+      pal_exec->Draw();
+      h->Draw("COLZ SAME");
       pad->Update();
 
       // Narrow palette tucked into the right margin
@@ -248,7 +265,7 @@ void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
       }
 
       // Row label inside the plot (top-left)
-      TPaveText *tag = new TPaveText(lm + 0.008, 1.0 - tm - 0.20, lm + 0.24, 1.0 - tm - 0.03, "NDC");
+      TPaveText *tag = new TPaveText(lm + 0.008, 1.0 - tm - 0.20, lm + 0.34, 1.0 - tm - 0.03, "NDC");
       tag->SetFillColorAlpha(kWhite, 0.85);
       tag->SetBorderSize(0);
       tag->SetTextFont(42);
@@ -264,6 +281,9 @@ void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
   c->cd();
   c->Update();
   c->Print(pdfname);
+
+  // Leave the global palette as the rest of the macro expects
+  gStyle->SetPalette(kRainBow);
 }
 
 #endif
