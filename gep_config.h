@@ -121,7 +121,7 @@ TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhit
 // (default: same as set 1 -- replace with a different TCut string
 // to compare selections).
 // ============================================================
-const char *rootfile_set2 = "";
+const char *rootfile_set2 = "/volatile/halla/sbs/adr/gep_replayed/GEP3/mult_foil_optics_2/rootfiles/gep5_fullreplay_*";
 const char *label_set1    = "Set 1";
 const char *label_set2    = "Set 2";
 
