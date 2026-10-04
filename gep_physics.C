@@ -10,6 +10,8 @@
 #include "TCut.h"
 #include "TLatex.h"
 #include "TGraphErrors.h"
+#include "TList.h"
+#include <algorithm>
 
 #include "gep_config.h"
 #include "gep_fill_vectors.h"
@@ -656,6 +658,192 @@ void DrawSetPages(TCanvas *c1, SetResults &r, const char *pdfname) {
 }
 
 
+// ============================================================
+// Polarimeter comparison pages (16:9, 1920x1080): rows = sets
+// (set 1 on top, set 2 below), columns = the plots of one row of the
+// per-set polarimeter page. No stats boxes; only the z_close legend.
+// ============================================================
+
+struct RowLayout {
+  double label_h, gap, row_h;
+  double rowy1[2], rowy2[2];
+};
+
+RowLayout SetupRowComparisonCanvas(TCanvas *c, const char *label1, const char *label2) {
+  RowLayout L;
+  L.label_h  = 0.040;
+  L.gap      = 0.014;
+  L.row_h    = (1.0 - 2.0 * L.label_h - L.gap) / 2.0;
+  L.rowy2[0] = 1.0 - L.label_h;
+  L.rowy1[0] = L.rowy2[0] - L.row_h;
+  L.rowy2[1] = L.rowy1[0] - L.gap - L.label_h;
+  L.rowy1[1] = L.rowy2[1] - L.row_h;
+
+  c->Clear();
+  c->SetCanvasSize(1920, 1080);
+  c->SetFillColor(kWhite);
+  c->cd();
+
+  TLatex t;
+  t.SetNDC();
+  t.SetTextFont(62);
+  t.SetTextSize(0.028);
+  t.SetTextAlign(22);
+  t.DrawLatex(0.5, L.rowy2[0] + 0.5 * L.label_h, label1);
+  t.DrawLatex(0.5, L.rowy2[1] + 0.5 * L.label_h, label2);
+
+  // Divider between the two sets
+  double ydiv = L.rowy1[0] - 0.5 * L.gap;
+  TLine *divider = new TLine(0.0, ydiv, 1.0, ydiv);
+  divider->SetNDC();
+  divider->SetLineColor(kGray + 2);
+  divider->SetLineWidth(3);
+  divider->Draw();
+
+  return L;
+}
+
+TPad *MakeRowPad(TCanvas *c, const TString &name, int icol, int ncol,
+                 const RowLayout &L, int iset, bool colz) {
+  c->cd();
+  double w = 1.0 / ncol;
+  TPad *pad = new TPad(name, "", icol * w, L.rowy1[iset], (icol + 1) * w, L.rowy2[iset]);
+  pad->SetLeftMargin(0.14);
+  pad->SetRightMargin(colz ? 0.14 : 0.04);
+  pad->SetTopMargin(0.08);
+  pad->SetBottomMargin(0.13);
+  pad->Draw();
+  pad->cd();
+  return pad;
+}
+
+// Clone with no stats box and no attached fit functions
+template <class H>
+H *CleanClone(H *src, const TString &name) {
+  H *h = (H *)src->Clone(name);
+  h->SetStats(0);
+  h->GetListOfFunctions()->Clear();
+  h->GetXaxis()->SetLabelSize(0.045);
+  h->GetYaxis()->SetLabelSize(0.045);
+  h->GetXaxis()->SetTitleSize(0.050);
+  h->GetYaxis()->SetTitleSize(0.050);
+  h->GetYaxis()->SetTitleOffset(1.35);
+  return h;
+}
+
+// Page 1: theta_FPP | DOCA | z_close | theta_FPP vs z_close
+void DrawPolarimeterComparisonRow1(TCanvas *c, SetResults *sets[2],
+                                   const char *label1, const char *label2,
+                                   const char *pdfname) {
+  gStyle->SetOptStat(0);
+  gStyle->SetOptFit(0);
+  gStyle->SetPalette(kRainBow);
+
+  RowLayout L = SetupRowComparisonCanvas(c, label1, label2);
+
+  for (int is = 0; is < 2; is++) {
+    PolarimeterHistograms &ph = sets[is]->polhist;
+    TString sfx = TString::Format("_cmpP1_%d", is);
+
+    // theta_FPP (log y)
+    TPad *p1 = MakeRowPad(c, "pth" + sfx, 0, 4, L, is, false);
+    p1->SetLogy();
+    TH1D *hth = CleanClone(ph.h_theta_fpp, "hth" + sfx);
+    hth->Draw("hist");
+
+    // DOCA with the half-Gaussian curve, no stats box
+    MakeRowPad(c, "pdoca" + sfx, 1, 4, L, is, false);
+    TH1D *hdoca = CleanClone(ph.h_doca, "hdoca" + sfx);
+    TF1 *fdoca = new TF1("fdoca" + sfx, "[0]*exp(-0.5*x*x/([1]*[1]))", 0.0, 0.2);
+    fdoca->SetParameters(hdoca->GetMaximum(), 0.10);
+    fdoca->SetParLimits(0, 1e-6, 1e9);
+    fdoca->SetParLimits(1, 1e-5, 5.0);
+    fdoca->SetLineColor(kBlue + 2);
+    fdoca->SetLineWidth(1);
+    if (hdoca->GetEntries() > 3) hdoca->Fit(fdoca, "RQ0");
+    double ymax = std::max(hdoca->GetMaximum(), fdoca->GetMaximum(0.0, 0.2));
+    hdoca->SetMaximum(1.2 * ymax);
+    hdoca->Draw("E1 P");
+    if (hdoca->GetEntries() > 3) fdoca->Draw("SAME");
+
+    // z_close all / small / large angle, with legend
+    MakeRowPad(c, "pz" + sfx, 2, 4, L, is, false);
+    TH1D *hzall = CleanClone(ph.h_zclose_all,  "hzall" + sfx);
+    TH1D *hzs   = CleanClone(ph.h_zclose_sAng, "hzs"   + sfx);
+    TH1D *hzl   = CleanClone(ph.h_zclose_lAng, "hzl"   + sfx);
+    hzall->Draw("hist");
+    hzs->Draw("hist same");
+    hzl->Draw("hist same");
+    TLegend *leg = new TLegend(0.58, 0.68, 0.95, 0.91);
+    leg->SetBorderSize(0);
+    leg->SetFillColorAlpha(kWhite, 0.88);
+    leg->SetTextSize(0.045);
+    leg->AddEntry(hzall, "all", "l");
+    leg->AddEntry(hzl, Form("#theta_{FPP} > %.2f", fpp_theta_min), "lf");
+    leg->AddEntry(hzs, Form("#theta_{FPP} <= %.2f", fpp_theta_min), "lf");
+    leg->Draw();
+
+    // theta_FPP vs z_close
+    MakeRowPad(c, "ptz" + sfx, 3, 4, L, is, true);
+    TH2D *htz = CleanClone(ph.h_theta_vs_zclose, "htz" + sfx);
+    htz->Draw("COLZ");
+  }
+
+  c->cd();
+  c->Update();
+  c->Print(pdfname);
+}
+
+// Page 2: dxp | dyp | dxp vs dyp -- no stats, no fits, ranges centred
+// on zero (-3..3 deg; both axes of the 2D plot).
+void DrawPolarimeterComparisonRow2(TCanvas *c, SetResults *sets[2],
+                                   const char *label1, const char *label2,
+                                   const char *pdfname) {
+  const double amin = -3.0, amax = 3.0;
+
+  gStyle->SetOptStat(0);
+  gStyle->SetOptFit(0);
+  gStyle->SetPalette(kRainBow);
+
+  RowLayout L = SetupRowComparisonCanvas(c, label1, label2);
+
+  for (int is = 0; is < 2; is++) {
+    PolarimeterHistograms &ph = sets[is]->polhist;
+    TString sfx = TString::Format("_cmpP2_%d", is);
+
+    TH1D *h1[2] = { CleanClone(ph.h_dxp, "hdxp" + sfx), CleanClone(ph.h_dyp, "hdyp" + sfx) };
+    for (int k = 0; k < 2; k++) {
+      MakeRowPad(c, TString::Format("pd%d", k) + sfx, k, 3, L, is, false);
+      h1[k]->GetXaxis()->SetRangeUser(amin, amax);
+      h1[k]->Draw("hist");
+      gPad->Update();
+      TLine *l0 = new TLine(0, 0, 0, h1[k]->GetMaximum());
+      l0->SetLineWidth(1);
+      l0->SetLineColor(kRed);
+      l0->Draw("same");
+    }
+
+    MakeRowPad(c, "pdd" + sfx, 2, 3, L, is, true);
+    TH2D *h2 = CleanClone(ph.h_dxpdyp, "hdxpdyp" + sfx);
+    h2->GetXaxis()->SetRangeUser(amin, amax);
+    h2->GetYaxis()->SetRangeUser(amin, amax);
+    h2->Draw("COLZ");
+    TLine *v = new TLine(0.0, amin, 0.0, amax);
+    TLine *hz = new TLine(amin, 0.0, amax, 0.0);
+    for (TLine *ln : { v, hz }) {
+      ln->SetLineColor(kRed);
+      ln->SetLineWidth(1);
+      ln->SetLineStyle(2);
+      ln->Draw("SAME");
+    }
+  }
+
+  c->cd();
+  c->Update();
+  c->Print(pdfname);
+}
+
+
 // files1 / files2: space- or comma-separated files or wildcards.
 // Empty files1 -> runlist / rootfile_wildcard1 from gep_config.h.
 // Empty files2 -> rootfile_set2 from gep_config.h; if that is also
@@ -744,6 +932,11 @@ void gep_physics(TString files1 = "", TString files2 = "",
     // Same maps again, 2 rows (U, V) x 4 columns (FT/FPP set 1 | FT/FPP set 2)
     DrawResidualComparisonPage2x4(c1, mod1, mod2, label1, label2, pdfname);
     DrawResidualComparisonPage2x4(c1, lay1, lay2, label1, label2, pdfname);
+
+    // Polarimeter plots, set 1 (top row) vs set 2 (bottom row)
+    SetResults *both[2] = { &set1, &set2 };
+    DrawPolarimeterComparisonRow1(c1, both, label1, label2, pdfname);
+    DrawPolarimeterComparisonRow2(c1, both, label1, label2, pdfname);
   }
 
   c1->Print(Form("%s]", pdfname));
