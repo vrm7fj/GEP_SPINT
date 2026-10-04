@@ -11,6 +11,9 @@
 #include "TLatex.h"
 #include "TGraphErrors.h"
 #include "TList.h"
+#include "TROOT.h"
+#include "TColor.h"
+#include "TExec.h"
 #include <algorithm>
 
 #include "gep_config.h"
@@ -717,6 +720,35 @@ TPad *MakeRowPad(TCanvas *c, const TString &name, int icol, int ncol,
   return pad;
 }
 
+
+// Opacity of the set-1 (top) row on the polarimeter comparison pages
+const double polcmp_set1_alpha = 0.90;
+
+// Scale line/fill/marker opacity of a 1D histogram
+void FadeHist(TH1 *h, double alpha) {
+  auto a = [&](Color_t idx) {
+    TColor *col = gROOT->GetColor(idx);
+    return (col ? col->GetAlpha() : 1.0) * alpha;
+  };
+  h->SetLineColorAlpha(h->GetLineColor(), a(h->GetLineColor()));
+  if (h->GetFillColor() != 0 && h->GetFillStyle() != 0)   // leave hollow histograms hollow
+    h->SetFillColorAlpha(h->GetFillColor(), a(h->GetFillColor()));
+  h->SetMarkerColorAlpha(h->GetMarkerColor(), a(h->GetMarkerColor()));
+}
+
+// Draw a 2D map with COLZ in kRainBow at the given opacity, using a
+// per-pad TExec so pads with different opacities coexist on a page
+// (axes-only first pass so no opaque copy sits underneath).
+void DrawColzAlpha(TH2 *h, double alpha, const TString &uid) {
+  TExec *ex = new TExec("palexec_" + uid,
+                        TString::Format("gStyle->SetPalette(kRainBow, 0, %.3f);", alpha));
+  h->SetContour(99);
+  h->Draw("AXIS");
+  ex->Draw();
+  h->Draw("COLZ SAME");
+  h->Draw("AXIS SAME");
+}
+
 // Clone with no stats box and no attached fit functions
 template <class H>
 H *CleanClone(H *src, const TString &name) {
@@ -748,17 +780,21 @@ void DrawPolarimeterComparisonRow1(TCanvas *c, SetResults *sets[2],
     // theta_FPP (log y)
     TPad *p1 = MakeRowPad(c, "pth" + sfx, 0, 4, L, is, false);
     p1->SetLogy();
+    const double alpha = (is == 0) ? polcmp_set1_alpha : 1.0;
+
     TH1D *hth = CleanClone(ph.h_theta_fpp, "hth" + sfx);
+    if (alpha < 1.0) FadeHist(hth, alpha);
     hth->Draw("hist");
 
     // DOCA with the half-Gaussian curve, no stats box
     MakeRowPad(c, "pdoca" + sfx, 1, 4, L, is, false);
     TH1D *hdoca = CleanClone(ph.h_doca, "hdoca" + sfx);
+    if (alpha < 1.0) FadeHist(hdoca, alpha);
     TF1 *fdoca = new TF1("fdoca" + sfx, "[0]*exp(-0.5*x*x/([1]*[1]))", 0.0, 0.2);
     fdoca->SetParameters(hdoca->GetMaximum(), 0.10);
     fdoca->SetParLimits(0, 1e-6, 1e9);
     fdoca->SetParLimits(1, 1e-5, 5.0);
-    fdoca->SetLineColor(kBlue + 2);
+    fdoca->SetLineColorAlpha(kBlue + 2, alpha);
     fdoca->SetLineWidth(1);
     if (hdoca->GetEntries() > 3) hdoca->Fit(fdoca, "RQ0");
     double ymax = std::max(hdoca->GetMaximum(), fdoca->GetMaximum(0.0, 0.2));
@@ -771,6 +807,7 @@ void DrawPolarimeterComparisonRow1(TCanvas *c, SetResults *sets[2],
     TH1D *hzall = CleanClone(ph.h_zclose_all,  "hzall" + sfx);
     TH1D *hzs   = CleanClone(ph.h_zclose_sAng, "hzs"   + sfx);
     TH1D *hzl   = CleanClone(ph.h_zclose_lAng, "hzl"   + sfx);
+    if (alpha < 1.0) { FadeHist(hzall, alpha); FadeHist(hzs, alpha); FadeHist(hzl, alpha); }
     hzall->Draw("hist");
     hzs->Draw("hist same");
     hzl->Draw("hist same");
@@ -786,12 +823,13 @@ void DrawPolarimeterComparisonRow1(TCanvas *c, SetResults *sets[2],
     // theta_FPP vs z_close
     MakeRowPad(c, "ptz" + sfx, 3, 4, L, is, true);
     TH2D *htz = CleanClone(ph.h_theta_vs_zclose, "htz" + sfx);
-    htz->Draw("COLZ");
+    DrawColzAlpha(htz, alpha, "htz" + sfx);
   }
 
   c->cd();
   c->Update();
   c->Print(pdfname);
+  gStyle->SetPalette(kRainBow);
 }
 
 // Page 2: dxp | dyp | dxp vs dyp -- no stats, no fits, ranges centred
@@ -811,10 +849,13 @@ void DrawPolarimeterComparisonRow2(TCanvas *c, SetResults *sets[2],
     PolarimeterHistograms &ph = sets[is]->polhist;
     TString sfx = TString::Format("_cmpP2_%d", is);
 
+    const double alpha = (is == 0) ? polcmp_set1_alpha : 1.0;
+
     TH1D *h1[2] = { CleanClone(ph.h_dxp, "hdxp" + sfx), CleanClone(ph.h_dyp, "hdyp" + sfx) };
     for (int k = 0; k < 2; k++) {
       MakeRowPad(c, TString::Format("pd%d", k) + sfx, k, 3, L, is, false);
       h1[k]->GetXaxis()->SetRangeUser(amin, amax);
+      if (alpha < 1.0) FadeHist(h1[k], alpha);
       h1[k]->Draw("hist");
       gPad->Update();
       TLine *l0 = new TLine(0, 0, 0, h1[k]->GetMaximum());
@@ -827,7 +868,7 @@ void DrawPolarimeterComparisonRow2(TCanvas *c, SetResults *sets[2],
     TH2D *h2 = CleanClone(ph.h_dxpdyp, "hdxpdyp" + sfx);
     h2->GetXaxis()->SetRangeUser(amin, amax);
     h2->GetYaxis()->SetRangeUser(amin, amax);
-    h2->Draw("COLZ");
+    DrawColzAlpha(h2, alpha, "hdxpdyp" + sfx);
     TLine *v = new TLine(0.0, amin, 0.0, amax);
     TLine *hz = new TLine(amin, 0.0, amax, 0.0);
     for (TLine *ln : { v, hz }) {
@@ -841,6 +882,7 @@ void DrawPolarimeterComparisonRow2(TCanvas *c, SetResults *sets[2],
   c->cd();
   c->Update();
   c->Print(pdfname);
+  gStyle->SetPalette(kRainBow);
 }
 
 
