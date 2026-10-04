@@ -740,6 +740,10 @@ void gep_physics(TString files1 = "", TString files2 = "",
     TH2D *lay2[4] = { set2.hist.h_eresidu_FT_layer,  set2.hist.h_eresidv_FT_layer,
                       set2.hist.h_eresidu_FPP_layer, set2.hist.h_eresidv_FPP_layer };
     DrawResidualComparisonPage(c1, lay1, lay2, label1, label2, pdfname);
+
+    // Same maps again, 2 rows (U, V) x 4 columns (FT/FPP set 1 | FT/FPP set 2)
+    DrawResidualComparisonPage2x4(c1, mod1, mod2, label1, label2, pdfname);
+    DrawResidualComparisonPage2x4(c1, lay1, lay2, label1, label2, pdfname);
   }
 
   c1->Print(Form("%s]", pdfname));

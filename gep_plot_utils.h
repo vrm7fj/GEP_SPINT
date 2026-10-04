@@ -156,126 +156,190 @@ int AddFilesToChain(TChain *C, const char *filelist) {
   return ntot;
 }
 
-// One 16:9 page (1920x1080, for a slide), 4 rows x 2 columns:
-// rows = FT U, FT V, FPP U, FPP V; left column = set 1, right column
-// = set 2. Pads are placed by hand with tight margins; the set label
-// is written once above each column and a gap + vertical divider
-// separates the two sets. Plain COL maps (no colour bar) on a common 0-1
-// (per-column-normalized) z scale -- no stats, no fits. Clones are
+// ------------------------------------------------------------
+// Shared pieces for the 16:9 (1920x1080) set-1 vs set-2 residual
+// comparison pages. Plain COL maps (no colour bar) on the common 0-1
+// (per-column-normalized) z scale -- no stats, no fits. Set 1 is drawn
+// in kRainBow at 80% opacity, set 2 in opaque kRainBow. Clones are
 // drawn so the original histograms keep their titles/styles.
-void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
-                                const char *label1, const char *label2,
-                                const char *pdfname) {
-  const char *rowname[4] = { "FT U-plane", "FT V-plane", "FPP U-plane", "FPP V-plane" };
+// ------------------------------------------------------------
 
-  // Layout in canvas NDC
-  const double header_h = 0.045;               // strip for column labels
-  const double gap      = 0.016;               // separation between sets
-  const double col_w    = (1.0 - gap) / 2.0;
-  const double row_h    = (1.0 - header_h) / 4.0;
-  const double colx[2]  = { 0.0, col_w + gap };
+struct ResidPadStyle {
+  double lm, rm, tm, bm;        // pad margins
+  double label_size;            // axis label size
+  double xtitle_size, xtitle_offset;
+  double xtick, ytick;          // tick lengths
+  double tag_x2, tag_h;         // row-label box right edge / height (pad NDC)
+  double tag_text;              // row-label text size
+};
 
-  // Pad margins (fractions of each pad)
-  const double lm = 0.050, rm = 0.015, tm = 0.035, bm = 0.155;
+void DrawResidualPad(TCanvas *c, TH2D *src, TString tagtext, bool is_set1,
+                     double x1, double y1, double x2, double y2,
+                     const ResidPadStyle &st, TString uid) {
+  if (!src) return;
 
+  c->cd();
+  TPad *pad = new TPad("pcmp_" + uid, "", x1, y1, x2, y2);
+  pad->SetLeftMargin(st.lm);
+  pad->SetRightMargin(st.rm);
+  pad->SetTopMargin(st.tm);
+  pad->SetBottomMargin(st.bm);
+  pad->SetFrameLineWidth(1);
+  pad->Draw();
+  pad->cd();
+
+  // Per-pad palette via TExec, so both palettes coexist on one page
+  TExec *pal_exec = new TExec("palexec_" + uid,
+                              is_set1 ? "gStyle->SetPalette(kRainBow, 0, 0.80);"
+                                      : "gStyle->SetPalette(kRainBow);");
+
+  TH2D *h = (TH2D *)src->Clone(TString(src->GetName()) + "_cmp_" + uid);
+  h->SetTitle("");
+  h->SetStats(0);
+  h->SetMinimum(0);
+  h->SetMaximum(1);
+
+  h->GetYaxis()->SetTitle("");
+  h->GetYaxis()->SetNdivisions(505);
+  h->GetYaxis()->SetLabelSize(st.label_size);
+  h->GetYaxis()->SetLabelOffset(0.006);
+  h->GetYaxis()->SetTickLength(st.ytick);
+
+  h->GetXaxis()->SetTitleSize(st.xtitle_size);
+  h->GetXaxis()->SetTitleOffset(st.xtitle_offset);
+  h->GetXaxis()->SetLabelSize(st.label_size);
+  h->GetXaxis()->SetLabelOffset(0.008);
+  h->GetXaxis()->SetTickLength(st.xtick);
+
+  // Axes-only first draw (sets up the frame; TH1::Draw without "same"
+  // clears the pad), then the TExec, then the colour map in that
+  // palette, then the axes again on top of the cells. The first pass
+  // must not paint the cells, otherwise an opaque copy sits underneath
+  // and hides the transparency.
+  h->SetContour(99);
+  h->Draw("AXIS");
+  pal_exec->Draw();
+  h->Draw("COL SAME");
+  h->Draw("AXIS SAME");
+  pad->Update();
+
+  // Row label inside the plot (top-left)
+  TPaveText *tag = new TPaveText(st.lm + 0.008, 1.0 - st.tm - 0.03 - st.tag_h,
+                                 st.tag_x2, 1.0 - st.tm - 0.03, "NDC");
+  tag->SetFillColorAlpha(kWhite, 0.85);
+  tag->SetBorderSize(0);
+  tag->SetTextFont(42);
+  tag->SetTextSize(st.tag_text);
+  tag->SetTextAlign(12);
+  tag->AddText(tagtext);
+  tag->Draw();
+
+  pad->Modified();
+}
+
+// Canvas setup, set labels above each half and a divider between them
+void SetupComparisonCanvas(TCanvas *c, double header_h,
+                           double xcen1, double xcen2,
+                           const char *label1, const char *label2) {
   c->Clear();
   c->SetCanvasSize(1920, 1080);
   c->SetFillColor(kWhite);
   c->cd();
 
-  // Column headers
   TLatex header;
   header.SetNDC();
   header.SetTextFont(62);
   header.SetTextSize(0.030);
   header.SetTextAlign(22);
-  header.DrawLatex(colx[0] + 0.5 * col_w, 1.0 - 0.5 * header_h, label1);
-  header.DrawLatex(colx[1] + 0.5 * col_w, 1.0 - 0.5 * header_h, label2);
+  header.DrawLatex(xcen1, 1.0 - 0.5 * header_h, label1);
+  header.DrawLatex(xcen2, 1.0 - 0.5 * header_h, label2);
 
-  // Divider between the two sets
   TLine *divider = new TLine(0.5, 0.0, 0.5, 1.0);
   divider->SetNDC();
   divider->SetLineColor(kGray + 2);
   divider->SetLineWidth(3);
   divider->Draw();
+}
+
+void FinishComparisonPage(TCanvas *c, const char *pdfname) {
+  c->cd();
+  c->Update();
+  c->Print(pdfname);
+  gStyle->SetPalette(kRainBow);   // leave the global palette as the macro expects
+}
+
+// Arrays set1[4] / set2[4] are ordered { FT U, FT V, FPP U, FPP V }.
+
+// Page layout A: 4 rows x 2 columns.
+//   rows = FT U, FT V, FPP U, FPP V; left column = set 1, right = set 2.
+void DrawResidualComparisonPage(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
+                                const char *label1, const char *label2,
+                                const char *pdfname) {
+  const char *rowname[4] = { "FT U-plane", "FT V-plane", "FPP U-plane", "FPP V-plane" };
+
+  const double header_h = 0.045;
+  const double gap      = 0.016;
+  const double col_w    = (1.0 - gap) / 2.0;
+  const double row_h    = (1.0 - header_h) / 4.0;
+  const double colx[2]  = { 0.0, col_w + gap };
+
+  // Wide, short pads (~950 x 260 px)
+  ResidPadStyle st = { 0.050, 0.015, 0.035, 0.155,
+                       0.085, 0.085, 0.80, 0.04, 0.03,
+                       0.39, 0.17, 0.10 };
+
+  SetupComparisonCanvas(c, header_h, colx[0] + 0.5 * col_w, colx[1] + 0.5 * col_w, label1, label2);
 
   for (int irow = 0; irow < 4; irow++) {
     for (int icol = 0; icol < 2; icol++) {
       TH2D *src = (icol == 0) ? set1[irow] : set2[irow];
-      if (!src) continue;
-
       double y2 = 1.0 - header_h - irow * row_h;
-      double y1 = y2 - row_h;
-
-      c->cd();
-      TPad *pad = new TPad(Form("pcmp_%s_%d%d", src->GetName(), irow, icol), "",
-                           colx[icol], y1, colx[icol] + col_w, y2);
-      pad->SetLeftMargin(lm);
-      pad->SetRightMargin(rm);
-      pad->SetTopMargin(tm);
-      pad->SetBottomMargin(bm);
-      pad->SetFrameLineWidth(1);
-      pad->Draw();
-      pad->cd();
-
-      // Per-pad palette: set 1 in kRainBow at 80% opacity (lighter,
-      // over the white pad), set 2 in the usual opaque kRainBow. A TExec in each pad
-      // switches the global palette right before that pad's histogram
-      // is painted, so both coexist on one page.
-      TExec *pal_exec = new TExec(Form("palexec_%d%d", irow, icol),
-                                  (icol == 0)
-                                    ? "gStyle->SetPalette(kRainBow, 0, 0.80);"
-                                    : "gStyle->SetPalette(kRainBow);");
-
-      TH2D *h = (TH2D *)src->Clone(Form("%s_cmp_%d%d", src->GetName(), irow, icol));
-      h->SetTitle("");
-      h->SetStats(0);
-      h->SetMinimum(0);
-      h->SetMaximum(1);
-
-      h->GetYaxis()->SetTitle("");
-      h->GetYaxis()->SetNdivisions(505);
-      h->GetYaxis()->SetLabelSize(0.085);
-      h->GetYaxis()->SetLabelOffset(0.006);
-
-      h->GetXaxis()->SetTitleSize(0.085);
-      h->GetXaxis()->SetTitleOffset(0.80);
-      h->GetXaxis()->SetLabelSize(0.085);
-      h->GetXaxis()->SetLabelOffset(0.008);
-      h->GetXaxis()->SetTickLength(0.04);
-
-      // Axes-only first draw (sets up the frame; TH1::Draw without
-      // "same" clears the pad), then the TExec, then the colour map in
-      // that palette, then the axes again on top of the cells. The
-      // first pass must not paint the cells, otherwise an opaque copy
-      // sits underneath and hides any transparency.
-      h->SetContour(99);
-      h->Draw("AXIS");
-      pal_exec->Draw();
-      h->Draw("COL SAME");
-      h->Draw("AXIS SAME");
-      pad->Update();
-
-      // Row label inside the plot (top-left)
-      TPaveText *tag = new TPaveText(lm + 0.008, 1.0 - tm - 0.20, lm + 0.34, 1.0 - tm - 0.03, "NDC");
-      tag->SetFillColorAlpha(kWhite, 0.85);
-      tag->SetBorderSize(0);
-      tag->SetTextFont(42);
-      tag->SetTextSize(0.10);
-      tag->SetTextAlign(12);
-      tag->AddText(Form("%s residual (mm)", rowname[irow]));
-      tag->Draw();
-
-      pad->Modified();
+      TString tagtext = TString::Format("%s residual (mm)", rowname[irow]);
+      TString uid     = TString::Format("A%s_%d%d", src ? src->GetName() : "x", irow, icol);
+      DrawResidualPad(c, src, tagtext, icol == 0,
+                      colx[icol], y2 - row_h, colx[icol] + col_w, y2, st, uid);
     }
   }
 
-  c->cd();
-  c->Update();
-  c->Print(pdfname);
+  FinishComparisonPage(c, pdfname);
+}
 
-  // Leave the global palette as the rest of the macro expects
-  gStyle->SetPalette(kRainBow);
+// Page layout B: 2 rows x 4 columns.
+//   columns = FT set 1, FPP set 1 | FT set 2, FPP set 2
+//   rows    = U-plane, V-plane
+void DrawResidualComparisonPage2x4(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
+                                   const char *label1, const char *label2,
+                                   const char *pdfname) {
+  const char *detname[2]   = { "FT", "FPP" };
+  const char *planename[2] = { "U-plane", "V-plane" };
+
+  const double header_h = 0.050;
+  const double gap      = 0.016;
+  const double col_w    = (1.0 - gap) / 4.0;
+  const double row_h    = (1.0 - header_h) / 2.0;
+  const double colx[4]  = { 0.0, col_w, 2.0 * col_w + gap, 3.0 * col_w + gap };
+
+  // Near-square pads (~470 x 510 px)
+  ResidPadStyle st = { 0.110, 0.020, 0.015, 0.100,
+                       0.048, 0.050, 0.95, 0.02, 0.02,
+                       0.70, 0.075, 0.048 };
+
+  SetupComparisonCanvas(c, header_h, colx[0] + col_w, colx[2] + col_w, label1, label2);
+
+  for (int iplane = 0; iplane < 2; iplane++) {
+    for (int icol = 0; icol < 4; icol++) {
+      int iset = icol / 2;          // 0 = set 1, 1 = set 2
+      int idet = icol % 2;          // 0 = FT, 1 = FPP
+      TH2D *src = (iset == 0 ? set1 : set2)[2 * idet + iplane];
+      double y2 = 1.0 - header_h - iplane * row_h;
+      TString tagtext = TString::Format("%s %s residual (mm)", detname[idet], planename[iplane]);
+      TString uid     = TString::Format("B%s_%d%d", src ? src->GetName() : "x", iplane, icol);
+      DrawResidualPad(c, src, tagtext, iset == 0,
+                      colx[icol], y2 - row_h, colx[icol] + col_w, y2, st, uid);
+    }
+  }
+
+  FinishComparisonPage(c, pdfname);
 }
 
 #endif
