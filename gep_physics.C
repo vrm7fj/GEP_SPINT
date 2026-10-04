@@ -15,6 +15,8 @@
 #include "TColor.h"
 #include "TExec.h"
 #include <algorithm>
+#include <vector>
+#include <cmath>
 
 #include "gep_config.h"
 #include "gep_fill_vectors.h"
@@ -752,11 +754,39 @@ void DrawColzAlpha(TH2 *h, double alpha, const TString &uid) {
   h->Draw("AXIS SAME");
 }
 
+// Small borderless box with a few lines of text (pad NDC)
+void DrawValueBox(const std::vector<TString> &lines, double x1, double y1, double x2, double y2) {
+  TPaveText *box = new TPaveText(x1, y1, x2, y2, "NDC");
+  box->SetFillColorAlpha(kWhite, 0.85);
+  box->SetBorderSize(0);
+  box->SetTextFont(42);
+  box->SetTextSize(0.045);
+  box->SetTextAlign(12);
+  for (const auto &l : lines) box->AddText(l);
+  box->Draw();
+}
+
+// Gaussian fit to the core of a dxp/dyp peak (same windows as the
+// per-set polarimeter page). Not drawn; returns false if not fit.
+bool FitPeakCore(TH1D *h, double lo_w, double hi_w, const TString &name,
+                 double &mu, double &sigma) {
+  if (h->GetEntries() <= 3 || h->GetRMS() <= 0) return false;
+  double m = h->GetXaxis()->GetBinCenter(h->GetMaximumBin());
+  TF1 *f = new TF1(name, "gaus", m - lo_w, m + hi_w);
+  f->SetParameters(h->GetMaximum(), m, 0.4);
+  h->Fit(f, "RQ0");
+  mu = f->GetParameter(1);
+  sigma = std::fabs(f->GetParameter(2));
+  return true;
+}
+
 // Clone with no stats box and no attached fit functions
 template <class H>
 H *CleanClone(H *src, const TString &name) {
   H *h = (H *)src->Clone(name);
   h->SetStats(0);
+  if (q2_label && q2_label[0] != '\0')
+    h->SetTitle(TString::Format("%s, %s", src->GetTitle(), q2_label));
   h->GetListOfFunctions()->Clear();
   h->GetXaxis()->SetLabelSize(0.045);
   h->GetYaxis()->SetLabelSize(0.045);
@@ -798,12 +828,18 @@ void DrawPolarimeterComparisonRow1(TCanvas *c, SetResults *sets[2],
     fdoca->SetParLimits(0, 1e-6, 1e9);
     fdoca->SetParLimits(1, 1e-5, 5.0);
     fdoca->SetLineColorAlpha(kBlue + 2, alpha);
-    fdoca->SetLineWidth(1);
+    fdoca->SetLineWidth(3);
+    hdoca->SetLineWidth(2);
     if (hdoca->GetEntries() > 3) hdoca->Fit(fdoca, "RQ0");
     double ymax = std::max(hdoca->GetMaximum(), fdoca->GetMaximum(0.0, 0.2));
     hdoca->SetMaximum(1.2 * ymax);
     hdoca->Draw("E1 P");
-    if (hdoca->GetEntries() > 3) fdoca->Draw("SAME");
+    if (hdoca->GetEntries() > 3) {
+      fdoca->Draw("SAME");
+      DrawValueBox({ TString::Format("Mean = %.4f cm", hdoca->GetMean()),
+                     TString::Format("#sigma = %.4f cm", fdoca->GetParameter(1)) },
+                   0.50, 0.74, 0.94, 0.90);
+    }
 
     // z_close all / small / large angle, with legend
     MakeRowPad(c, "pz" + sfx, 2, 4, L, is, false);
@@ -811,6 +847,8 @@ void DrawPolarimeterComparisonRow1(TCanvas *c, SetResults *sets[2],
     TH1D *hzs   = CleanClone(ph.h_zclose_sAng, "hzs"   + sfx);
     TH1D *hzl   = CleanClone(ph.h_zclose_lAng, "hzl"   + sfx);
     if (alpha < 1.0) { FadeHist(hzall, alpha); FadeHist(hzs, alpha); FadeHist(hzl, alpha); }
+    hzl->SetFillColorAlpha(kRed,  0.75);   // large-angle fill
+    hzs->SetFillColorAlpha(kBlue, 0.75);   // small-angle fill
     hzall->Draw("hist");
     hzs->Draw("hist same");
     hzl->Draw("hist same");
@@ -865,6 +903,14 @@ void DrawPolarimeterComparisonRow2(TCanvas *c, SetResults *sets[2],
       l0->SetLineWidth(1);
       l0->SetLineColor(kRed);
       l0->Draw("same");
+
+      double mu = 0, sg = 0;
+      bool ok = (k == 0) ? FitPeakCore(h1[k], 0.2, 0.24, TString::Format("fcore%d", k) + sfx, mu, sg)
+                         : FitPeakCore(h1[k], 0.24, 0.2, TString::Format("fcore%d", k) + sfx, mu, sg);
+      if (!ok) { mu = h1[k]->GetMean(); sg = h1[k]->GetStdDev(); }
+      DrawValueBox({ TString::Format("Mean = %.3f deg", mu),
+                     TString::Format("#sigma = %.3f deg", sg) },
+                   0.58, 0.76, 0.95, 0.90);
     }
 
     MakeRowPad(c, "pdd" + sfx, 2, 3, L, is, true);
