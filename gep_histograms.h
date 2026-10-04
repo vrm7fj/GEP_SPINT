@@ -175,7 +175,7 @@ PolarimeterHistograms CreatePolarimeterHistograms(const char *suffix = "") {
   h.h_dxp = new TH1D(TString("h_dxp_pol") + suffix, "dxp;xp_{FT} - xp_{FPP} [deg];Counts", 400, -10, 11);
   h.h_dyp = new TH1D(TString("h_dyp_pol") + suffix, "dyp;yp_{FT} - yp_{FPP} [deg];Counts", 400, -10, 11);
 
-  h.h_dxpdyp       = new TH2D(TString("h_dxpdyp") + suffix,       "dxp vs dyp;xp_{FT} - xp_{FPP} [deg];yp_{FT} - yp_{FPP} [deg]", 100, -5, 5, 100, -5, 5);
+  h.h_dxpdyp       = new TH2D(TString("h_dxpdyp") + suffix,       "dxp vs dyp;xp_{FT} - xp_{FPP} [deg];yp_{FT} - yp_{FPP} [deg]", 200, -5, 5, 200, -5, 5);
   h.h_dxpdyp_allth = new TH2D(TString("h_dxpdyp_allth") + suffix, "dxp vs dyp (No cut on #theta);xp_{FT} - xp_{FPP} [deg];yp_{FT} - yp_{FPP} [deg]", 100, -5, 5, 100, -5, 5);
 
   h.h_theta_vs_zclose = new TH2D(TString("h_theta_vs_zclose") + suffix, "#theta_{FPP} vs z_{close};z_{close} [m];#theta_{FPP} [deg]", 200, 0, 3.5, 200, 0, 10);
