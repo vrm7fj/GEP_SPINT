@@ -680,7 +680,8 @@ RowLayout SetupRowComparisonCanvas(TCanvas *c, const char *label1, const char *l
   L.rowy2[0] = 1.0 - L.label_h;
   L.rowy1[0] = L.rowy2[0] - L.row_h;
   L.rowy2[1] = L.rowy1[0] - L.gap - L.label_h;
-  L.rowy1[1] = L.rowy2[1] - L.row_h;
+  L.rowy1[1] = 0.0;   // exact: (1 - ...) - row_h can round to -1e-17,
+                      // and TPad rejects any edge outside [0,1]
 
   c->Clear();
   c->SetCanvasSize(1920, 1080);
@@ -710,7 +711,9 @@ TPad *MakeRowPad(TCanvas *c, const TString &name, int icol, int ncol,
                  const RowLayout &L, int iset, bool colz) {
   c->cd();
   double w = 1.0 / ncol;
-  TPad *pad = new TPad(name, "", icol * w, L.rowy1[iset], (icol + 1) * w, L.rowy2[iset]);
+  auto clamp01 = [](double v) { return std::min(1.0, std::max(0.0, v)); };
+  TPad *pad = new TPad(name, "", clamp01(icol * w), clamp01(L.rowy1[iset]),
+                       clamp01((icol + 1) * w), clamp01(L.rowy2[iset]));
   pad->SetLeftMargin(0.14);
   pad->SetRightMargin(colz ? 0.14 : 0.04);
   pad->SetTopMargin(0.08);

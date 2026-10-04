@@ -21,6 +21,7 @@
 #include "TObjString.h"
 #include "TStyle.h"
 #include <iostream>
+#include <algorithm>
 #include <vector>
 #include <string>
 
@@ -177,6 +178,10 @@ void DrawResidualPad(TCanvas *c, TH2D *src, TString tagtext, bool is_set1,
                      double x1, double y1, double x2, double y2,
                      const ResidPadStyle &st, TString uid) {
   if (!src) return;
+
+  // TPad rejects edges outside [0,1]; guard against round-off
+  auto clamp01 = [](double v) { return std::min(1.0, std::max(0.0, v)); };
+  x1 = clamp01(x1); y1 = clamp01(y1); x2 = clamp01(x2); y2 = clamp01(y2);
 
   c->cd();
   TPad *pad = new TPad("pcmp_" + uid, "", x1, y1, x2, y2);
