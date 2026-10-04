@@ -58,7 +58,7 @@ const int MAXHIT = 1000;
 const bool use_runlist = false;   // flip to false to go back to wildcard
 
 //const char *rootfile_wildcard1 = "/volatile/halla/sbs/adr/gep_replayed/GEP3/cfoil_zerofield_May23_iter3/rootfiles/gep5_fullreplay_*";
-const char *rootfile_wildcard1 = "/volatile/halla/sbs/adr/gep_replayed/GEP3/mult_foil_optics_2/rootfiles/gep5_fullreplay_*";
+const char *rootfile_wildcard1 = "/cache/halla/sbs/prod/GEP_REPLAYS/GEP3/LH2/June8_2025/gep5_fullreplay_3*";
 
 const char *rootdir = "/cache/halla/sbs/prod/GEP_REPLAYS/GEP3/LH2/June8_2025/";
 
@@ -81,7 +81,7 @@ const int nruns = sizeof(runlist)/sizeof(runlist[0]);
 // TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(sbs.tr.vz[0]+0.10)<3*0.02212&&sbs.gemFPP.track.sclose[0]<0.005";
 
 //June8
-//TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(heep.dt_ADC[0]-10)<2.5*3.7&&abs(heep.dpp[0]-0.005)<2.5*0.019&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&sbs.gemFPP.track.sclose[0]<0.025";
+TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(heep.dt_ADC[0]-10)<2.5*3.7&&abs(heep.dpp[0]-0.005)<2.5*0.019&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&sbs.gemFPP.track.sclose[0]<0.05";
 
 //Jun8 with new timing
 //TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-10)<3*3.7&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
@@ -89,7 +89,7 @@ const int nruns = sizeof(runlist)/sizeof(runlist[0]);
 //MFFO
 //TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&sbs.hcal.nblk[0]>1&&(abs(sbs.tr.vz[0]+0.23)<0.01577*3||abs(sbs.tr.vz[0]+0.1196)<0.01376*3||abs(sbs.tr.vz[0]+0.06531)<0.01276*3||abs(sbs.tr.vz[0]-0.0432)<0.01131*3)&&sqrt(pow(((sbs.gemFT.track.y[0]+6.7*sbs.gemFT.track.yp[0]-sbs.hcal.y[0]-0.0001234)/0.04903),2)+pow(((sbs.gemFT.track.x[0]+6.7*sbs.gemFT.track.xp[0]-sbs.hcal.x[0]-0.1986)/0.06138),2))<20";
 
-TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&sbs.hcal.nblk[0]>1&&(abs(sbs.tr.vz[0]+0.23)<0.01577*3||abs(sbs.tr.vz[0]+0.1196)<0.01376*3||abs(sbs.tr.vz[0]+0.06531)<0.01276*3||abs(sbs.tr.vz[0]-0.0432)<0.01131*3)&&sbs.gemFPP.track.sclose[0]<0.005";
+//TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&sbs.hcal.nblk[0]>1&&(abs(sbs.tr.vz[0]+0.23)<0.01577*3||abs(sbs.tr.vz[0]+0.1196)<0.01376*3||abs(sbs.tr.vz[0]+0.06531)<0.01276*3||abs(sbs.tr.vz[0]-0.0432)<0.01131*3)&&sbs.gemFPP.track.sclose[0]<0.005";
 
 // ============================================================
 // Polarimeter reconstruction cut (theta_FPP / DOCA / zclose /
@@ -105,13 +105,13 @@ TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&
 //TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(sbs.tr.vz[0]+0.10)<3*0.02212&&sbs.gemFPP.track.sclose[0]<0.005";
 
 //June8
-//TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(heep.dt_ADC[0]-10)<2.5*3.7&&abs(heep.dpp[0]-0.005)<2.5*0.019&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7";
+TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(heep.dt_ADC[0]-10)<2.5*3.7&&abs(heep.dpp[0]-0.005)<2.5*0.019&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7";
 
 //Jun8 with new timing
 //TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-10)<3*3.7&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
 
 //MFFO
-TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&sbs.hcal.nblk[0]>1&&(abs(sbs.tr.vz[0]+0.23)<0.01577*3||abs(sbs.tr.vz[0]+0.1196)<0.01376*3||abs(sbs.tr.vz[0]+0.06531)<0.01276*3||abs(sbs.tr.vz[0]-0.0432)<0.01131*3)&&sbs.gemFPP.track.sclose[0]<0.005";
+//TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&sbs.hcal.nblk[0]>1&&(abs(sbs.tr.vz[0]+0.23)<0.01577*3||abs(sbs.tr.vz[0]+0.1196)<0.01376*3||abs(sbs.tr.vz[0]+0.06531)<0.01276*3||abs(sbs.tr.vz[0]-0.0432)<0.01131*3)&&sbs.gemFPP.track.sclose[0]<0.005";
 
 
 // ============================================================
@@ -127,12 +127,12 @@ TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhit
 // (default: same as set 1 -- replace with a different TCut string
 // to compare selections).
 // ============================================================
-const char *rootfile_set2 = "/volatile/halla/sbs/adr/gep_replayed/GEP3/mult_foil_optics_2/rootfiles/gep5_fullreplay_*";
-const char *label_set1    = "Set 1";
-const char *label_set2    = "Set 2";
+const char *rootfile_set2 = "/volatile/halla/sbs/vidura/GEP_REPLAYS/GEP3/LH2/FPPA_F2B_WITH_JUNE8_9_DONE/rootfiles/gep5_fullreplay_*";
+const char *label_set1    = "Before Alignment";
+const char *label_set2    = "After Alignment";
 
-TCut globalcut_set2          = globalcut;
-TCut globalcut_thetafpp_set2 = globalcut_thetafpp;
+TCut globalcut_set2          = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-0.1613)<3*1.3&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sbs.gemFPP.track.sclose[0]<0.0025&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
+TCut globalcut_thetafpp_set2 = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-0.1613)<3*1.3&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sbs.gemFPP.track.sclose[0]<0.0025&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
 
 // Secondary histogram-fill cuts / windows used downstream (theta range,
 // zclose target window, DOCA cut) -- same numeric values as
