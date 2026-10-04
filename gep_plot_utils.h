@@ -322,7 +322,7 @@ void DrawResidualComparisonPage2x4(TCanvas *c, TH2D *set1[4], TH2D *set2[4],
   // Near-square pads (~470 x 510 px)
   ResidPadStyle st = { 0.110, 0.020, 0.015, 0.100,
                        0.048, 0.050, 0.95, 0.02, 0.02,
-                       0.70, 0.075, 0.048 };
+                       0.82, 0.075, 0.048 };
 
   SetupComparisonCanvas(c, header_h, colx[0] + col_w, colx[2] + col_w, label1, label2);
 
