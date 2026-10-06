@@ -213,8 +213,6 @@ PolarimeterHistograms CreatePolarimeterHistograms(const char *suffix = "") {
   h.h_doca->SetLineColor(kBlack);
   h.h_doca->SetLineWidth(1);
   h.h_doca->SetMarkerColor(kBlack);
-  h.h_doca->SetMarkerStyle(20);
-  h.h_doca->SetMarkerSize(0.55);
   h.h_doca->SetFillStyle(0);
 
   h.h_dxp->SetLineColor(kBlack);

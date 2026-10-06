@@ -423,7 +423,7 @@ void DrawSetPages(TCanvas *c1, SetResults &r, const char *pdfname) {
 
   c1->cd(2);
   gPad->SetLogy(0);
-  r.polhist.h_doca->Draw("E1 P");
+  r.polhist.h_doca->Draw("hist");
 
   double doca_fit_min = 0.0;
   double doca_fit_max = 0.2;
@@ -440,7 +440,7 @@ void DrawSetPages(TCanvas *c1, SetResults &r, const char *pdfname) {
   double doca_ymax_fit  = f_halfgaus->GetMaximum(doca_fit_min, doca_fit_max);
   r.polhist.h_doca->SetMaximum(1.2 * (doca_ymax_fit > doca_ymax_hist ? doca_ymax_fit : doca_ymax_hist));
 
-  r.polhist.h_doca->Draw("E1 P");
+  r.polhist.h_doca->Draw("hist");
   f_halfgaus->Draw("SAME");
 
   TLine *lfpp_sclose = new TLine(0.5, 0, 0.5, r.polhist.h_doca->GetMaximum());
@@ -833,7 +833,7 @@ void DrawPolarimeterComparisonRow1(TCanvas *c, SetResults *sets[2],
     if (hdoca->GetEntries() > 3) hdoca->Fit(fdoca, "RQ0");
     double ymax = std::max(hdoca->GetMaximum(), fdoca->GetMaximum(0.0, 0.2));
     hdoca->SetMaximum(1.2 * ymax);
-    hdoca->Draw("E1 P");
+    hdoca->Draw("hist");
     if (hdoca->GetEntries() > 3) {
       fdoca->Draw("SAME");
       DrawValueBox({ TString::Format("Mean = %.4f cm", hdoca->GetMean()),
