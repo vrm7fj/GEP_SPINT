@@ -59,6 +59,7 @@ const bool use_runlist = false;   // flip to false to go back to wildcard
 
 //const char *rootfile_wildcard1 = "/volatile/halla/sbs/adr/gep_replayed/GEP3/cfoil_zerofield_May23_iter3/rootfiles/gep5_fullreplay_*";
 const char *rootfile_wildcard1 = "/volatile/halla/sbs/vidura/parsed-rootfiles/DNP_J8/DNP_J8.root";
+//const char *rootfile_wildcard1 = "/volatile/halla/sbs/adr/gep_replayed/GEP3/cfoil_zerofield_May23_iter3/rootfiles/gep5_fullreplay_*";
 
 const char *rootdir = "/cache/halla/sbs/prod/GEP_REPLAYS/GEP3/LH2/June8_2025/";
 
@@ -78,13 +79,14 @@ const int nruns = sizeof(runlist)/sizeof(runlist[0]);
 //Improved Final
 //TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-0.1613)<3*1.3&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sbs.gemFPP.track.sclose[0]<0.0025&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
 
-// TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(sbs.tr.vz[0]+0.10)<3*0.02212&&sbs.gemFPP.track.sclose[0]<0.005";
+//TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(sbs.tr.vz[0]+0.10)<3*0.02212&&sbs.gemFPP.track.sclose[0]<0.005";
 
 //June8
 //TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(heep.dt_ADC[0]-10)<2.5*3.7&&abs(heep.dpp[0]-0.005)<2.5*0.019&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&sbs.gemFPP.track.sclose[0]<0.05";
 
-//June8 Better
+//June8 Better - **
 TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&(sbs.gemFT.track.chi2ndf[0]<15&&sbs.gemFPP.track.chi2ndf[0]<15)&&abs(heep.dpp[0]-0.01586)<2.5*0.01539&&abs(heep.dt_ADC[0]-10)<2.5*3.66&&sbs.gemFPP.track.sclose[0]<0.005";
+
 //Jun8 with new timing
 //TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-10)<3*3.7&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
 
@@ -109,7 +111,7 @@ TCut globalcut = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&
 //June8
 //TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(heep.dt_ADC[0]-10)<2.5*3.7&&abs(heep.dpp[0]-0.005)<2.5*0.019&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7";
 
-//June8 Better
+//June8 Better - **
 TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&sqrt(pow((heep.dxECAL-0.01+0.025*earm.ecal.x)/0.013,2)+pow((heep.dyECAL-(0.0008+0.0007474*earm.ecal.x+0.01815*pow(earm.ecal.x,2)+0.005745*pow(earm.ecal.x,3)))/0.01506,2))<=3.5&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&(sbs.gemFT.track.chi2ndf[0]<15&&sbs.gemFPP.track.chi2ndf[0]<15)&&abs(heep.dpp[0]-0.01586)<2.5*0.01539&&abs(heep.dt_ADC[0]-10)<2.5*3.66";
 
 //Jun8 with new timing
@@ -133,12 +135,17 @@ TCut globalcut_thetafpp = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhit
 // to compare selections).
 // ============================================================
 const char *rootfile_set2 = "/volatile/halla/sbs/vidura/parsed-rootfiles/DNP_DONE/gep5_fullreplay_*";
+//const char *rootfile_set2 = "/volatile/halla/sbs/adr/gep_replayed/GEP3/mult_foil_optics_2/rootfiles/gep5_fullreplay_*";
 const char *label_set1    = "Before Alignment";
 const char *label_set2    = "After Alignment";
 
 // Kinematic tag appended to the plot titles on the polarimeter
 // comparison pages (ROOT TLatex; set to "" to leave titles as they are)
 const char *q2_label      = "Q^{2} = 11 GeV^{2}";
+
+//TCut globalcut_set2          =  "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(sbs.tr.vz[0]+0.10)<3*0.02212&&sbs.gemFPP.track.sclose[0]<0.005";
+//TCut globalcut_thetafpp_set2 =  "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&abs(sbs.tr.vz[0]+0.10)<3*0.02212&&sbs.gemFPP.track.sclose[0]<0.005";
+
 
 TCut globalcut_set2          = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-0.1613)<3*1.3&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sbs.gemFPP.track.sclose[0]<0.0025&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
 TCut globalcut_thetafpp_set2 = "(sbs.gemFT.track.nhits[0]>4||sbs.gemFT.track.ngoodhits[0]>2)&&(sbs.gemFPP.track.nhits[0]>4||sbs.gemFPP.track.ngoodhits[0]>2)&&earm.ecal.nblk>2&&sbs.hcal.nblk>1&&abs(sbs.tr.vz+0.1)<0.15&&(heep.ecalo[0]/heep.eprime_eth[0])>0.7&&abs(heep.dt_ADC[0]-0.1613)<3*1.3&&abs(heep.dpp[0]-0.005589)<3*0.02291&&sbs.gemFPP.track.sclose[0]<0.0025&&sqrt(pow((heep.dxECAL-0.01063+0.025*earm.ecal.x)/0.0125,2)+pow((heep.dyECAL+0.004986-(0.004374+0.004684*earm.ecal.x+0.01549*pow(earm.ecal.x,2)+0.009088*pow(earm.ecal.x,3)))/0.01705,2))<=3.5";
