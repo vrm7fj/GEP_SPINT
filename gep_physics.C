@@ -935,6 +935,64 @@ void DrawPolarimeterComparisonRow2(TCanvas *c, SetResults *sets[2],
 }
 
 
+// Overall (all-modules-combined) 1D residuals:
+// FT U | FT V | FPP U | FPP V, set 1 (top row) vs set 2 (bottom row).
+// Mean and sigma from the per-set FitPeak results; the Gaussian is
+// drawn over mean +- 2 sigma (the FitPeak refit window).
+void DrawResidual1DComparisonPage(TCanvas *c, SetResults *sets[2],
+                                  const char *label1, const char *label2,
+                                  const char *pdfname) {
+  gStyle->SetOptStat(0);
+  gStyle->SetOptFit(0);
+
+  RowLayout L = SetupRowComparisonCanvas(c, label1, label2);
+
+  for (int is = 0; is < 2; is++) {
+    SetResults &r = *sets[is];
+    TString sfx = TString::Format("_cmpR1D_%d", is);
+    const double alpha = (is == 0) ? polcmp_set1_alpha : 1.0;
+
+    TH1D *src[4] = { r.hist.h_eresidu_FT,  r.hist.h_eresidv_FT,
+                     r.hist.h_eresidu_FPP, r.hist.h_eresidv_FPP };
+    GEPFitResult *fit[4] = { &r.fit_eresidu_FT,  &r.fit_eresidv_FT,
+                             &r.fit_eresidu_FPP, &r.fit_eresidv_FPP };
+
+    for (int k = 0; k < 4; k++) {
+      MakeRowPad(c, TString::Format("pres%d", k) + sfx, k, 4, L, is, false);
+      TH1D *h = CleanClone(src[k], TString::Format("hres%d", k) + sfx);
+      h->SetLineColor(kBlack);
+      h->SetLineWidth(2);
+      if (alpha < 1.0) FadeHist(h, alpha);
+
+      const GEPFitResult &f = *fit[k];
+      TF1 *g = nullptr;
+      if (f.valid && f.sigma > 0) {
+        g = new TF1(TString::Format("gres%d", k) + sfx, "gaus",
+                    f.mean - 2.0 * f.sigma, f.mean + 2.0 * f.sigma);
+        g->SetParameters(f.amplitude, f.mean, f.sigma);
+        g->SetLineColorAlpha(kBlue + 2, alpha);
+        g->SetLineWidth(3);
+        h->SetMaximum(1.2 * std::max(h->GetMaximum(), g->GetMaximum()));
+      } else {
+        h->SetMaximum(1.2 * h->GetMaximum());
+      }
+      h->Draw("hist");
+      if (g) g->Draw("SAME");
+
+      double mu = (f.valid) ? f.mean  : h->GetMean();
+      double sg = (f.valid) ? f.sigma : h->GetStdDev();
+      DrawValueBox({ TString::Format("Mean = %.4f mm", mu),
+                     TString::Format("#sigma = %.4f mm", sg) },
+                   0.56, 0.76, 0.95, 0.90);
+    }
+  }
+
+  c->cd();
+  c->Update();
+  c->Print(pdfname);
+}
+
+
 // files1 / files2: space- or comma-separated files or wildcards.
 // Empty files1 -> runlist / rootfile_wildcard1 from gep_config.h.
 // Empty files2 -> rootfile_set2 from gep_config.h; if that is also
@@ -1024,8 +1082,11 @@ void gep_physics(TString files1 = "", TString files2 = "",
     DrawResidualComparisonPage2x4(c1, mod1, mod2, label1, label2, pdfname);
     DrawResidualComparisonPage2x4(c1, lay1, lay2, label1, label2, pdfname);
 
-    // Polarimeter plots, set 1 (top row) vs set 2 (bottom row)
+    // Overall 1D residuals, set 1 (top row) vs set 2 (bottom row)
     SetResults *both[2] = { &set1, &set2 };
+    DrawResidual1DComparisonPage(c1, both, label1, label2, pdfname);
+
+    // Polarimeter plots, set 1 (top row) vs set 2 (bottom row)
     DrawPolarimeterComparisonRow1(c1, both, label1, label2, pdfname);
     DrawPolarimeterComparisonRow2(c1, both, label1, label2, pdfname);
   }
