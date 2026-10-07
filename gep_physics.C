@@ -962,6 +962,8 @@ void DrawResidual1DComparisonPage(TCanvas *c, SetResults *sets[2],
       TH1D *h = CleanClone(src[k], TString::Format("hres%d", k) + sfx);
       h->SetLineColor(kBlack);
       h->SetLineWidth(2);
+      h->SetFillStyle(1001);
+      h->SetFillColorAlpha(kAzure - 9, 0.55);   // light blue, semi-transparent
       if (alpha < 1.0) FadeHist(h, alpha);
 
       const GEPFitResult &f = *fit[k];
